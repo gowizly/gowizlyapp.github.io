@@ -1,31 +1,48 @@
 /// <reference types="react" />
 /// <reference types="react-dom" />
 import React, { useState, useEffect } from 'react';
-import { Calendar, Clock, Users, Plus, Camera, Mail, Bot, Settings, ChevronLeft, ChevronRight, Send, Upload, User, Lock, LogOut } from 'lucide-react';
+import { Calendar, Clock, Users, Plus, Camera, Mail, Bot, Settings, ChevronLeft, ChevronRight, Upload, User, Lock, LogOut } from 'lucide-react';
+
+
+interface Child {
+      id: number | null;
+      name: string;
+      grade: string;
+      school: string;
+    }
+
+interface Event {
+      id: number | null;
+      childId: number;
+      title:  string;
+      type: string;
+      date: string;
+      time: string;
+      description: string;
+}
 
 const FamilyCalendarApp = () => {
   //const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(true);
-  const [currentUser, setCurrentUser] = useState(null);
+  //const [currentUser, setCurrentUser] = useState(null);
+  const [currentUser, setCurrentUser] = useState({ name: 'Sarah Johnson', email: 'sarah@email.com' });
   const [currentView, setCurrentView] = useState('calendar');
-  const [calendarView, setCalendarView] = useState('month');
+  //const [calendarView, setCalendarView] = useState('month');
   const [selectedDate, setSelectedDate] = useState(new Date());
-  const [selectedChild, setSelectedChild] = useState(null);
-  const [events, setEvents] = useState([]);
-  const [children, setChildren] = useState([]);
+  //const [selectedChild, setSelectedChild] = useState(null);
+  // Updated state to allow for a full Child object or null
+  const [selectedChild, setSelectedChild] = useState<Child | null>(null);
+  //const [events, setEvents] = useState([]);
+  const [events, setEvents] = useState<Event[]>([]);
+  const [children, setChildren] = useState<Child[]>([]);
   const [showAddChild, setShowAddChild] = useState(false);
   const [showAddEvent, setShowAddEvent] = useState(false);
   const [showAIAssistant, setShowAIAssistant] = useState(false);
   const [aiMode, setAiMode] = useState('email');
   const [emailText, setEmailText] = useState('');
   const [newChild, setNewChild] = useState({ name: '', grade: '', school: '' });
-  const [newEvent, setNewEvent] = useState({
-    title: '',
-    type: 'assignment',
-    date: '',
-    time: '',
-    description: ''
-  });
+  // Added childId to newEvent state
+  const [newEvent, setNewEvent] = useState({ title: '', type: 'assignment', date: '', time: '', description: '', childId: null as number | null });
 
   const eventTypes = {
     assignment: { color: 'bg-purple-500', label: 'Assignment' },
@@ -79,7 +96,7 @@ const FamilyCalendarApp = () => {
   const LoginForm = () => {
     const [loginData, setLoginData] = useState({ username: '', password: '' });
 
-    const handleLogin = (e) => {
+    const handleLogin = (e: { preventDefault: () => void; }) => {
       e.preventDefault();
       setCurrentUser({ name: 'Sarah Johnson', email: 'sarah@email.com' });
       setIsAuthenticated(true);
@@ -216,7 +233,7 @@ const FamilyCalendarApp = () => {
   );
 
   const CalendarView = () => {
-    const getDaysInMonth = (date) => {
+    const getDaysInMonth = (date: Date) => {
       const year = date.getFullYear();
       const month = date.getMonth();
       const firstDay = new Date(year, month, 1);
@@ -241,15 +258,15 @@ const FamilyCalendarApp = () => {
       return days;
     };
 
-    const getEventsForDate = (date) => {
+    const getEventsForDate = (date: Date) => {
       const dateStr = date.toISOString().split('T')[0];
       return events.filter(event => 
-        event.date === dateStr && 
+      event.date === dateStr && 
         (selectedChild ? event.childId === selectedChild.id : true)
       );
     };
 
-    const navigateMonth = (direction) => {
+    const navigateMonth = (direction: number) => {
       const newDate = new Date(selectedDate);
       newDate.setMonth(selectedDate.getMonth() + direction);
       setSelectedDate(newDate);
@@ -282,12 +299,18 @@ const FamilyCalendarApp = () => {
           <div className="flex items-center space-x-4">
             <select
               value={selectedChild?.id || ''}
-              onChange={(e) => setSelectedChild(children.find(c => c.id === parseInt(e.target.value)) || null)}
+              //onChange={(e) => setSelectedChild(children.find(c => c.id === parseInt(e.target.value)) || null)}
+              onChange={(e) => {
+                const childId = parseInt(e.target.value);
+                const child = children.find(c => c.id === childId);
+                // We set the state to either the found child or null
+                setSelectedChild(child || null);
+              }}
               className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
             >
               <option value="">All Children</option>
               {children.map(child => (
-                <option key={child.id} value={child.id}>{child.name}</option>
+                <option key={child.id} value={child.id?.toString() || ''}>{child.name}</option>
               ))}
             </select>
             <button
@@ -327,8 +350,11 @@ const FamilyCalendarApp = () => {
                   {dayEvents.slice(0, 2).map(event => (
                     <div
                       key={event.id}
-                      className={`text-xs text-white px-2 py-1 rounded ${eventTypes[event.type].color}`}
+                      // Correctly access the event type color
+                      className={`text-xs text-white px-2 py-1 rounded ${eventTypes[event.type as keyof typeof eventTypes].color}`}
                       title={event.title}
+                      //className={`text-xs text-white px-2 py-1 rounded ${eventTypes[event.type].color}`}
+                      //title={event.title}
                     >
                       {event.title.length > 12 ? event.title.substring(0, 12) + '...' : event.title}
                     </div>
@@ -386,19 +412,26 @@ const FamilyCalendarApp = () => {
                   <p className="text-sm text-gray-600">{child.grade}</p>
                   <p className="text-sm text-gray-500">{child.school}</p>
                 </div>
-              </div>
-              
-              <div className="border-t pt-4">
-                <h4 className="font-medium text-gray-700 mb-2">Upcoming Events ({childEvents.length})</h4>
+              </div> 
+              <div className="mt-4">
+                <h4 className="font-semibold text-gray-700 mb-2">Upcoming Events:</h4>
                 <div className="space-y-2">
-                  {childEvents.slice(0, 3).map(event => (
-                    <div key={event.id} className="flex items-center space-x-2">
-                      <div className={`w-3 h-3 rounded-full ${eventTypes[event.type].color}`}></div>
-                      <span className="text-sm text-gray-600 truncate">{event.title}</span>
-                    </div>
-                  ))}
-                  {childEvents.length === 0 && (
-                    <p className="text-sm text-gray-500 italic">No upcoming events</p>
+                  {childEvents.length > 0 ? (
+                    childEvents.map(event => (
+                      <div key={event.id} className="bg-gray-50 p-3 rounded-lg flex items-center space-x-3">
+                        <Clock className="w-4 h-4 text-purple-500" />
+                        <div className="flex-1">
+                          <p className="text-sm font-medium">{event.title}</p>
+                          <p className="text-xs text-gray-500">{event.date} at {event.time}</p>
+                        </div>
+                        <div
+                          className={`w-3 h-3 rounded-full ${eventTypes[event.type as keyof typeof eventTypes].color}`}
+                          title={eventTypes[event.type as keyof typeof eventTypes].label}
+                        ></div>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-sm text-gray-500 italic">No upcoming events.</p>
                   )}
                 </div>
               </div>
@@ -605,13 +638,19 @@ const FamilyCalendarApp = () => {
               <label className="block text-sm font-medium text-gray-700 mb-2">Child</label>
               <select
                 value={selectedChild?.id || ''}
-                onChange={(e) => setSelectedChild(children.find(c => c.id === parseInt(e.target.value)))}
+                //onChange={(e) => setSelectedChild(Children.find(c => c.id === parseInt(e.target.value)))}
+                onChange={(e) => {
+                const childId = parseInt(e.target.value);
+                const child = children.find(c => c.id === childId);
+                // We set the state to either the found child or null
+                setSelectedChild(child || null);
+                }}
                 className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
                 required
               >
                 <option value="">Select a child</option>
                 {children.map(child => (
-                  <option key={child.id} value={child.id}>{child.name}</option>
+                  <option key={child.id} value={child.id?.toString() || ''}>{child.name}</option>
                 ))}
               </select>
             </div>
@@ -641,7 +680,7 @@ const FamilyCalendarApp = () => {
                 value={newEvent.description}
                 onChange={(e) => setNewEvent({...newEvent, description: e.target.value})}
                 className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 resize-none"
-                rows="3"
+                rows = {3}
                 placeholder="Event description (optional)"
               />
             </div>
@@ -656,15 +695,12 @@ const FamilyCalendarApp = () => {
             </button>
             <button
               onClick={() => {
-                const newId = events.length + 1;
-                const eventToAdd = {
-                  ...newEvent,
-                  id: newId,
-                  childId: selectedChild?.id
-                };
-                setEvents([...events, eventToAdd]);
-                setNewEvent({ title: '', type: 'assignment', date: '', time: '', description: '' });
-                setShowAddEvent(false);
+                const newId = events.length > 0 ? Math.max(...events.map(e => e.id || 0)) + 1 : 1;
+                if (newEvent.childId === null) return;
+                const createdEvent: Event = { ...newEvent, id: newId, childId: newEvent.childId };
+                setEvents([...events, createdEvent]);
+                setNewEvent({ title: '', type: 'assignment', date: '', time: '', description: '', childId: null });
+                setShowAddEvent(false);                
                 alert('Event added! You can now send calendar invites from the event details.');
               }}
               disabled={!newEvent.title || !newEvent.date || !selectedChild}
