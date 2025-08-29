@@ -1,0 +1,115 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id              Int       @id @default(autoincrement())
+  username        String    @unique
+  email           String    @unique
+  password        String?
+  googleId        String?   @unique
+  isVerified      Boolean   @default(false)
+  resetToken      String?
+  resetTokenExpire DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  // Relationships
+  children        Child[]
+  events          Event[]
+}
+
+model Child {
+  id              Int       @id @default(autoincrement())
+  name            String
+  gradeLevel      String
+  schoolName      String
+  birthDate       DateTime?
+  profilePhoto    String?   // URL to profile photo
+  
+  // Google Classroom Integration
+  googleClassroomEnabled Boolean @default(false)
+  googleClassroomEmail   String?
+  googleClassroomToken   String? // Encrypted token for classroom access
+  
+  // Parent relationship
+  parentId        Int
+  parent          User      @relation(fields: [parentId], references: [id], onDelete: Cascade)
+  
+  // Relationships
+  events          Event[]
+  
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  @@index([parentId])
+}
+
+model Event {
+  id              Int       @id @default(autoincrement())
+  title           String
+  description     String?
+  startDate       DateTime
+  endDate         DateTime?
+  isAllDay        Boolean   @default(false)
+  
+  // Event categorization
+  type            EventType @default(OTHER)
+  color           String?   // Hex color code for display
+  priority        Priority  @default(MEDIUM)
+  
+  // Recurrence
+  isRecurring     Boolean   @default(false)
+  recurrenceRule  String?   // RRULE format for recurring events
+  
+  // Reminders
+  hasReminder     Boolean   @default(false)
+  reminderMinutes Int?      // Minutes before event to remind
+  
+  // Relationships
+  parentId        Int
+  parent          User      @relation(fields: [parentId], references: [id], onDelete: Cascade)
+  
+  childId         Int?      // Optional - event can be for specific child
+  child           Child?    @relation(fields: [childId], references: [id], onDelete: Cascade)
+  
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  @@index([parentId])
+  @@index([childId])
+  @@index([startDate])
+  @@index([type])
+}
+
+enum EventType {
+  SCHOOL_EVENT
+  ASSIGNMENT_DUE
+  EXAM
+  PARENT_MEETING
+  EXTRACURRICULAR
+  APPOINTMENT
+  BIRTHDAY
+  HOLIDAY
+  REMINDER
+  OTHER
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
