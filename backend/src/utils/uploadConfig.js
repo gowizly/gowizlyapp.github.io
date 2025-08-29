@@ -1,0 +1,69 @@
+import multer from "multer";
+import path from "path";
+import fs from "fs";
+import { logError } from "./logger.js";
+
+export const ensureUploadsDirectory = () => {
+  const uploadsDir = './uploads/children';
+  if (!fs.existsSync('./uploads')) {
+    fs.mkdirSync('./uploads');
+  }
+  if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir, { recursive: true });
+  }
+  return uploadsDir;
+};
+
+const createStorage = (directory) => {
+  return multer.diskStorage({
+    destination: (req, file, cb) => {
+      cb(null, directory);
+    },
+    filename: (req, file, cb) => {
+      const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+      cb(null, `child-${req.params.childId}-${uniqueSuffix}${path.extname(file.originalname)}`);
+    }
+  });
+};
+
+const imageFileFilter = (req, file, cb) => {
+  if (file.mimetype.startsWith('image/')) {
+    cb(null, true);
+  } else {
+    cb(new Error('Only image files are allowed'), false);
+  }
+};
+
+export const createChildPhotoUpload = () => {
+  const uploadsDir = ensureUploadsDirectory();
+  
+  return multer({
+    storage: createStorage(uploadsDir),
+    fileFilter: imageFileFilter,
+    limits: {
+      fileSize: 5 * 1024 * 1024 // 5MB limit
+    }
+  });
+};
+
+export const handleMulterError = (error, req, res, next) => {
+  if (error instanceof multer.MulterError) {
+    if (error.code === 'LIMIT_FILE_SIZE') {
+      logError('File upload size limit exceeded', error, { userId: req.user?.id });
+      return res.status(400).json({
+        success: false,
+        msg: 'File too large. Maximum size is 5MB.'
+      });
+    }
+  }
+  
+  if (error.message === 'Only image files are allowed') {
+    logError('Invalid file type uploaded', error, { userId: req.user?.id });
+    return res.status(400).json({
+      success: false,
+      msg: 'Only image files are allowed for profile photos.'
+    });
+  }
+  
+  next(error);
+};
