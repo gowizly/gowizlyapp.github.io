@@ -1,3 +1,6 @@
+// No file imports needed - console logging only
+
+// Color codes for console output
 const colors = {
   reset: '\x1b[0m',
   red: '\x1b[31m',
@@ -9,6 +12,7 @@ const colors = {
   white: '\x1b[37m'
 };
 
+// Log levels
 const LOG_LEVELS = {
   ERROR: 0,
   WARN: 1,
@@ -18,21 +22,27 @@ const LOG_LEVELS = {
 
 const currentLogLevel = LOG_LEVELS[process.env.LOG_LEVEL?.toUpperCase()] ?? LOG_LEVELS.INFO;
 
+// Format timestamp
 const getTimestamp = () => {
   return new Date().toISOString().replace('T', ' ').substring(0, 19);
 };
 
+// Write to log file
+// No file logging - console only
 
+// Console logger with colors
 const consoleLog = (level, color, message, meta = {}) => {
-  const timestamp = getTimestamp().substring(11);
+  const timestamp = getTimestamp().substring(11); // Just time part
   const metaStr = Object.keys(meta).length > 0 ? ` ${JSON.stringify(meta, null, 2)}` : '';
   
   if (process.env.NODE_ENV !== 'production') {
     console.log(`${color}${timestamp} [${level}]:${colors.reset} ${message}${metaStr}`);
   }
   
+  // No file logging - console only
 };
 
+// Logger object
 const logger = {
   error: (message, meta = {}) => {
     if (currentLogLevel >= LOG_LEVELS.ERROR) {
@@ -59,10 +69,12 @@ const logger = {
   }
 };
 
+// Create request logger middleware
 export const requestLogger = (req, res, next) => {
   const start = Date.now();
   const { method, url, ip } = req;
   
+  // Log request
   logger.info('Incoming request', {
     method,
     url,
@@ -71,6 +83,7 @@ export const requestLogger = (req, res, next) => {
     userId: req.user?.id || null
   });
 
+  // Override res.json to log response
   const originalJson = res.json;
   res.json = function(body) {
     const duration = Date.now() - start;
@@ -93,6 +106,7 @@ export const requestLogger = (req, res, next) => {
   next();
 };
 
+// Helper functions for different log levels
 export const logInfo = (message, meta = {}) => {
   logger.info(message, meta);
 };

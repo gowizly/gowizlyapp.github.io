@@ -3,6 +3,7 @@ import path from "path";
 import fs from "fs";
 import { logError } from "./logger.js";
 
+// Ensure uploads directory exists
 export const ensureUploadsDirectory = () => {
   const uploadsDir = './uploads/children';
   if (!fs.existsSync('./uploads')) {
@@ -14,6 +15,7 @@ export const ensureUploadsDirectory = () => {
   return uploadsDir;
 };
 
+// Multer storage configuration
 const createStorage = (directory) => {
   return multer.diskStorage({
     destination: (req, file, cb) => {
@@ -26,6 +28,7 @@ const createStorage = (directory) => {
   });
 };
 
+// File filter for images only
 const imageFileFilter = (req, file, cb) => {
   if (file.mimetype.startsWith('image/')) {
     cb(null, true);
@@ -34,6 +37,7 @@ const imageFileFilter = (req, file, cb) => {
   }
 };
 
+// Create multer upload middleware for child photos
 export const createChildPhotoUpload = () => {
   const uploadsDir = ensureUploadsDirectory();
   
@@ -46,6 +50,7 @@ export const createChildPhotoUpload = () => {
   });
 };
 
+// Multer error handler middleware
 export const handleMulterError = (error, req, res, next) => {
   if (error instanceof multer.MulterError) {
     if (error.code === 'LIMIT_FILE_SIZE') {

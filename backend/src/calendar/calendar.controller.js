@@ -2,6 +2,7 @@ import prisma from "../config/db.js";
 import calendarService from "../services/calendar.service.js";
 import { logInfo, logError, logWarn, logDebug } from "../utils/logger.js";
 
+// Get all events for a user (with optional filtering)
 export const getAllEvents = async (req, res) => {
   try {
     const { childId, type, limit = 50, offset = 0 } = req.query;
@@ -14,10 +15,12 @@ export const getAllEvents = async (req, res) => {
       offset: parseInt(offset)
     });
 
+    // Build filter conditions
     const whereConditions = {
       parentId: req.user.id
     };
 
+    // Filter by child if specified
     if (childId) {
       const childIdInt = parseInt(childId);
       if (isNaN(childIdInt)) {
@@ -28,6 +31,7 @@ export const getAllEvents = async (req, res) => {
         });
       }
 
+      // Verify child belongs to user
       const child = await prisma.child.findFirst({
         where: { id: childIdInt, parentId: req.user.id }
       });
@@ -43,10 +47,12 @@ export const getAllEvents = async (req, res) => {
       whereConditions.childId = childIdInt;
     }
 
+    // Filter by event type if specified
     if (type) {
       whereConditions.type = type;
     }
 
+    // Get events with pagination
     const events = await prisma.event.findMany({
       where: whereConditions,
       include: {
@@ -62,6 +68,7 @@ export const getAllEvents = async (req, res) => {
       skip: parseInt(offset)
     });
 
+    // Get total count for pagination
     const totalEvents = await prisma.event.count({
       where: whereConditions
     });
@@ -96,16 +103,19 @@ export const getAllEvents = async (req, res) => {
   }
 };
 
+// Get monthly calendar view with events
 export const getMonthlyCalendar = async (req, res) => {
   try {
     const { year, month, childId } = req.query;
     
     logInfo('Monthly calendar request', { userId: req.user.id, year, month, childId });
     
+    // Default to current month if not provided
     const currentDate = new Date();
     const targetYear = year ? parseInt(year) : currentDate.getFullYear();
     const targetMonth = month ? parseInt(month) : currentDate.getMonth() + 1;
 
+    // Validate year and month
     if (targetYear < 1900 || targetYear > 2100) {
       logWarn('Invalid year in calendar request', { userId: req.user.id, year: targetYear });
       return res.status(400).json({
@@ -122,6 +132,7 @@ export const getMonthlyCalendar = async (req, res) => {
       });
     }
 
+    // Verify child belongs to user if childId is provided
     if (childId) {
       logDebug('Verifying child ownership', { userId: req.user.id, childId });
       const child = await prisma.child.findFirst({
@@ -140,6 +151,7 @@ export const getMonthlyCalendar = async (req, res) => {
       }
     }
 
+    // Get events for the month
     logDebug('Fetching monthly events', { userId: req.user.id, targetYear, targetMonth, childId });
     const events = await calendarService.getMonthlyEvents(
       req.user.id,
@@ -148,12 +160,15 @@ export const getMonthlyCalendar = async (req, res) => {
       childId
     );
 
+    // Generate calendar grid
     const calendarGrid = calendarService.generateCalendarGrid(targetYear, targetMonth);
 
+    // Format events for calendar display
     const formattedEvents = events.map(event => 
       calendarService.formatEventForCalendar(event)
     );
 
+    // Group events by date for easier frontend consumption
     const eventsByDate = {};
     formattedEvents.forEach(event => {
       const dateKey = new Date(event.startDate).toISOString().split('T')[0];
@@ -192,6 +207,7 @@ export const getMonthlyCalendar = async (req, res) => {
   }
 };
 
+// Get events for a specific date range
 export const getEventsByDateRange = async (req, res) => {
   try {
     const { startDate, endDate, childId } = req.query;
@@ -203,6 +219,7 @@ export const getEventsByDateRange = async (req, res) => {
       });
     }
 
+    // Verify child belongs to user if childId is provided
     if (childId) {
       const child = await prisma.child.findFirst({
         where: {
@@ -247,10 +264,12 @@ export const getEventsByDateRange = async (req, res) => {
   }
 };
 
+// Get upcoming events
 export const getUpcomingEvents = async (req, res) => {
   try {
     const { childId, days = 7 } = req.query;
 
+    // Verify child belongs to user if childId is provided
     if (childId) {
       const child = await prisma.child.findFirst({
         where: {
@@ -294,6 +313,7 @@ export const getUpcomingEvents = async (req, res) => {
   }
 };
 
+// Create a new event
 export const createEvent = async (req, res) => {
   try {
     const {
@@ -310,6 +330,7 @@ export const createEvent = async (req, res) => {
       reminderMinutes
     } = req.body;
 
+    // Verify child belongs to user if childId is provided
     if (childId) {
       const child = await prisma.child.findFirst({
         where: {
@@ -326,6 +347,7 @@ export const createEvent = async (req, res) => {
       }
     }
 
+    // Check for conflicting events if needed
     const conflicts = await calendarService.getConflictingEvents(
       req.user.id,
       startDate,
@@ -376,6 +398,7 @@ export const createEvent = async (req, res) => {
   }
 };
 
+// Get a specific event by ID
 export const getEventById = async (req, res) => {
   try {
     const { eventId } = req.params;
@@ -417,11 +440,13 @@ export const getEventById = async (req, res) => {
   }
 };
 
+// Update an event
 export const updateEvent = async (req, res) => {
   try {
     const { eventId } = req.params;
     const updateData = {};
 
+    // Only include fields that are provided
     const allowedFields = [
       'title', 'description', 'startDate', 'endDate', 'isAllDay',
       'type', 'priority', 'color', 'childId', 'hasReminder', 'reminderMinutes'
@@ -446,6 +471,7 @@ export const updateEvent = async (req, res) => {
       });
     }
 
+    // Verify child belongs to user if childId is being updated
     if (updateData.childId) {
       const child = await prisma.child.findFirst({
         where: {
@@ -464,6 +490,7 @@ export const updateEvent = async (req, res) => {
 
     updateData.updatedAt = new Date();
 
+    // Update event
     const updatedEvent = await prisma.event.updateMany({
       where: {
         id: parseInt(eventId),
@@ -479,6 +506,7 @@ export const updateEvent = async (req, res) => {
       });
     }
 
+    // Fetch updated event data
     const event = await prisma.event.findUnique({
       where: { id: parseInt(eventId) },
       include: {
@@ -507,6 +535,7 @@ export const updateEvent = async (req, res) => {
   }
 };
 
+// Delete an event
 export const deleteEvent = async (req, res) => {
   try {
     const { eventId } = req.params;
@@ -538,10 +567,12 @@ export const deleteEvent = async (req, res) => {
   }
 };
 
+// Get calendar statistics for dashboard
 export const getCalendarStatistics = async (req, res) => {
   try {
     const { childId } = req.query;
 
+    // Verify child belongs to user if childId is provided
     if (childId) {
       const child = await prisma.child.findFirst({
         where: {
@@ -576,6 +607,7 @@ export const getCalendarStatistics = async (req, res) => {
   }
 };
 
+// Get event type colors
 export const getEventTypeColors = async (req, res) => {
   try {
     const colors = calendarService.getEventTypeColors();
