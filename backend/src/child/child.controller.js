@@ -1,7 +1,11 @@
 import prisma from "../config/db.js";
+// COMMENTED OUT - Google Classroom Integration
+// import { google } from "googleapis";
 import crypto from "crypto";
+// import googleClassroomService from "../services/googleClassroom.service.js";
 import { logInfo, logError, logWarn, logDebug } from "../utils/logger.js";
 
+// Get all children for the authenticated user
 export const getChildren = async (req, res) => {
   try {
     logInfo('Fetching children list', { userId: req.user.id });
@@ -16,6 +20,9 @@ export const getChildren = async (req, res) => {
         schoolName: true,
         birthDate: true,
         profilePhoto: true,
+        // COMMENTED OUT - Google Classroom Integration
+        // googleClassroomEnabled: true,
+        // googleClassroomEmail: true,
         createdAt: true,
         updatedAt: true
       }
@@ -39,6 +46,7 @@ export const getChildren = async (req, res) => {
   }
 };
 
+// Get a specific child by ID
 export const getChildById = async (req, res) => {
   try {
     const { childId } = req.params;
@@ -46,7 +54,7 @@ export const getChildById = async (req, res) => {
     const child = await prisma.child.findFirst({
       where: {
         id: parseInt(childId),
-        parentId: req.user.id
+        parentId: req.user.id // Ensure user can only access their own children
       },
       select: {
         id: true,
@@ -55,6 +63,9 @@ export const getChildById = async (req, res) => {
         schoolName: true,
         birthDate: true,
         profilePhoto: true,
+        // COMMENTED OUT - Google Classroom Integration
+        // googleClassroomEnabled: true,
+        // googleClassroomEmail: true,
         createdAt: true,
         updatedAt: true
       }
@@ -80,17 +91,19 @@ export const getChildById = async (req, res) => {
   }
 };
 
+// Add a new child
 export const addChild = async (req, res) => {
   try {
     const { name, gradeLevel, schoolName, birthDate } = req.body;
     
     logInfo('Adding new child', { userId: req.user.id, name, gradeLevel, schoolName });
 
+    // Check if user already has maximum number of children (optional limit)
     const childCount = await prisma.child.count({
       where: { parentId: req.user.id }
     });
 
-    if (childCount >= 10) {
+    if (childCount >= 10) { // Set reasonable limit
       logWarn('Maximum children limit reached', { userId: req.user.id, currentCount: childCount });
       return res.status(400).json({
         success: false,
@@ -115,6 +128,9 @@ export const addChild = async (req, res) => {
         schoolName: true,
         birthDate: true,
         profilePhoto: true,
+        // COMMENTED OUT - Google Classroom Integration
+        // googleClassroomEnabled: true,
+        // googleClassroomEmail: true,
         createdAt: true,
         updatedAt: true
       }
@@ -136,11 +152,13 @@ export const addChild = async (req, res) => {
   }
 };
 
+// Update child information
 export const updateChild = async (req, res) => {
   try {
     const { childId } = req.params;
     const updateData = {};
 
+    // Only include fields that are provided
     const allowedFields = ['name', 'gradeLevel', 'schoolName', 'birthDate', 'googleClassroomEmail'];
     
     allowedFields.forEach(field => {
@@ -162,6 +180,7 @@ export const updateChild = async (req, res) => {
 
     updateData.updatedAt = new Date();
 
+    // Verify child belongs to user and update
     const child = await prisma.child.updateMany({
       where: {
         id: parseInt(childId),
@@ -177,6 +196,7 @@ export const updateChild = async (req, res) => {
       });
     }
 
+    // Fetch updated child data
     const updatedChild = await prisma.child.findUnique({
       where: { id: parseInt(childId) },
       select: {
@@ -186,6 +206,9 @@ export const updateChild = async (req, res) => {
         schoolName: true,
         birthDate: true,
         profilePhoto: true,
+        // COMMENTED OUT - Google Classroom Integration
+        // googleClassroomEnabled: true,
+        // googleClassroomEmail: true,
         createdAt: true,
         updatedAt: true
       }
@@ -205,6 +228,7 @@ export const updateChild = async (req, res) => {
   }
 };
 
+// Delete a child
 export const deleteChild = async (req, res) => {
   try {
     const { childId } = req.params;
@@ -236,6 +260,7 @@ export const deleteChild = async (req, res) => {
   }
 };
 
+// Upload child profile photo
 export const uploadChildPhoto = async (req, res) => {
   try {
     const { childId } = req.params;
@@ -247,6 +272,8 @@ export const uploadChildPhoto = async (req, res) => {
       });
     }
 
+    // In a real app, you'd upload to cloud storage (AWS S3, Cloudinary, etc.)
+    // For now, we'll just store the file path
     const photoUrl = `/uploads/children/${req.file.filename}`;
 
     const updatedChild = await prisma.child.updateMany({
@@ -280,3 +307,256 @@ export const uploadChildPhoto = async (req, res) => {
     });
   }
 };
+
+// Initiate Google Classroom OAuth flow
+// COMMENTED OUT - Google Classroom Integration
+/*
+export const initiateGoogleClassroomAuth = async (req, res) => {
+  try {
+    const { childId } = req.params;
+
+    // Verify the child belongs to the user
+    const child = await prisma.child.findFirst({
+      where: {
+        id: parseInt(childId),
+        parentId: req.user.id
+      }
+    });
+
+    if (!child) {
+      return res.status(404).json({
+        success: false,
+        msg: "Child not found"
+      });
+    }
+
+    // Generate OAuth URL
+    const authUrl = googleClassroomService.generateAuthUrl(childId, { userId: req.user.id });
+
+    res.json({
+      success: true,
+      data: { authUrl }
+    });
+  } catch (error) {
+    console.error("Initiate Google Classroom auth error:", error);
+    res.status(500).json({
+      success: false,
+      msg: "Failed to initiate Google Classroom authentication"
+    });
+  }
+};
+*/
+
+// Handle Google Classroom OAuth callback
+// COMMENTED OUT - Google Classroom Integration
+/*
+export const handleGoogleClassroomCallback = async (req, res) => {
+  try {
+    const { code, state } = req.query;
+    
+    if (!code || !state) {
+      return res.redirect(`${process.env.CLIENT_URL}/children?error=oauth_failed`);
+    }
+
+    const stateData = JSON.parse(state);
+    const { childId, userId } = stateData;
+
+    // Verify the child belongs to the user
+    const child = await prisma.child.findFirst({
+      where: {
+        id: parseInt(childId),
+        parentId: userId
+      }
+    });
+
+    if (!child) {
+      return res.redirect(`${process.env.CLIENT_URL}/children?error=child_not_found`);
+    }
+
+    // Handle OAuth callback
+    const { tokens, email } = await googleClassroomService.handleCallback(code, stateData);
+
+    // Encrypt and store tokens
+    const encryptedAccessToken = encryptToken(tokens.access_token);
+    const encryptedRefreshToken = tokens.refresh_token ? encryptToken(tokens.refresh_token) : null;
+
+    await prisma.child.update({
+      where: { id: parseInt(childId) },
+      data: {
+        googleClassroomEnabled: true,
+        googleClassroomEmail: email,
+        googleClassroomToken: JSON.stringify({
+          access_token: encryptedAccessToken,
+          refresh_token: encryptedRefreshToken,
+          expiry_date: tokens.expiry_date
+        }),
+        updatedAt: new Date()
+      }
+    });
+
+    res.redirect(`${process.env.CLIENT_URL}/children?success=classroom_connected`);
+  } catch (error) {
+    console.error("Google Classroom callback error:", error);
+    res.redirect(`${process.env.CLIENT_URL}/children?error=oauth_callback_failed`);
+  }
+};
+*/
+
+// Get Google Classroom data for a child
+// COMMENTED OUT - Google Classroom Integration
+/*
+export const getGoogleClassroomData = async (req, res) => {
+  try {
+    const { childId } = req.params;
+
+    const child = await prisma.child.findFirst({
+      where: {
+        id: parseInt(childId),
+        parentId: req.user.id,
+        googleClassroomEnabled: true
+      }
+    });
+
+    if (!child || !child.googleClassroomToken) {
+      return res.status(404).json({
+        success: false,
+        msg: "Child not found or Google Classroom not connected"
+      });
+    }
+
+    // Decrypt tokens
+    const tokenData = JSON.parse(child.googleClassroomToken);
+    const accessToken = decryptToken(tokenData.access_token);
+
+    if (!accessToken) {
+      return res.status(400).json({
+        success: false,
+        msg: "Invalid Google Classroom credentials"
+      });
+    }
+
+    // Validate token and refresh if needed
+    const isValid = await googleClassroomService.validateToken(accessToken);
+    let currentAccessToken = accessToken;
+
+    if (!isValid && tokenData.refresh_token) {
+      try {
+        const refreshToken = decryptToken(tokenData.refresh_token);
+        const newTokens = await googleClassroomService.refreshToken(refreshToken);
+        
+        // Update stored tokens
+        const updatedTokenData = {
+          access_token: encryptToken(newTokens.access_token),
+          refresh_token: tokenData.refresh_token,
+          expiry_date: newTokens.expiry_date
+        };
+
+        await prisma.child.update({
+          where: { id: parseInt(childId) },
+          data: { googleClassroomToken: JSON.stringify(updatedTokenData) }
+        });
+
+        currentAccessToken = newTokens.access_token;
+      } catch (refreshError) {
+        return res.status(401).json({
+          success: false,
+          msg: "Google Classroom authentication expired. Please reconnect."
+        });
+      }
+    }
+
+    // Fetch classroom data
+    const courses = await googleClassroomService.getCourses(currentAccessToken);
+    
+    res.json({
+      success: true,
+      data: {
+        courses,
+        email: child.googleClassroomEmail
+      }
+    });
+  } catch (error) {
+    console.error("Get Google Classroom data error:", error);
+    res.status(500).json({
+      success: false,
+      msg: "Failed to fetch Google Classroom data"
+    });
+  }
+};
+*/
+
+// Disconnect Google Classroom
+// COMMENTED OUT - Google Classroom Integration
+/*
+export const disconnectGoogleClassroom = async (req, res) => {
+  try {
+    const { childId } = req.params;
+
+    const updatedChild = await prisma.child.updateMany({
+      where: {
+        id: parseInt(childId),
+        parentId: req.user.id
+      },
+      data: {
+        googleClassroomEnabled: false,
+        googleClassroomEmail: null,
+        googleClassroomToken: null,
+        updatedAt: new Date()
+      }
+    });
+
+    if (updatedChild.count === 0) {
+      return res.status(404).json({
+        success: false,
+        msg: "Child not found"
+      });
+    }
+
+    res.json({
+      success: true,
+      msg: "Google Classroom disconnected successfully"
+    });
+  } catch (error) {
+    console.error("Disconnect Google Classroom error:", error);
+    res.status(500).json({
+      success: false,
+      msg: "Internal server error"
+    });
+  }
+};
+*/
+
+// Helper function to encrypt tokens
+function encryptToken(token) {
+  const algorithm = 'aes-256-gcm';
+  const secretKey = process.env.ENCRYPTION_KEY || 'default-key-change-in-production';
+  const key = crypto.scryptSync(secretKey, 'salt', 32);
+  const iv = crypto.randomBytes(16);
+  
+  const cipher = crypto.createCipher(algorithm, key);
+  let encrypted = cipher.update(token, 'utf8', 'hex');
+  encrypted += cipher.final('hex');
+  
+  return `${iv.toString('hex')}:${encrypted}`;
+}
+
+// Helper function to decrypt tokens
+function decryptToken(encryptedToken) {
+  try {
+    const algorithm = 'aes-256-gcm';
+    const secretKey = process.env.ENCRYPTION_KEY || 'default-key-change-in-production';
+    const key = crypto.scryptSync(secretKey, 'salt', 32);
+    
+    const [ivHex, encrypted] = encryptedToken.split(':');
+    const iv = Buffer.from(ivHex, 'hex');
+    
+    const decipher = crypto.createDecipher(algorithm, key);
+    let decrypted = decipher.update(encrypted, 'hex', 'utf8');
+    decrypted += decipher.final('utf8');
+    
+    return decrypted;
+  } catch (error) {
+    console.error('Token decryption error:', error);
+    return null;
+  }
+}

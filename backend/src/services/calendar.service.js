@@ -1,7 +1,7 @@
 import prisma from "../config/db.js";
 
 class CalendarService {
-
+  // Get events for a specific month
   async getMonthlyEvents(userId, year, month, childId = null) {
     const startDate = new Date(year, month - 1, 1); // month is 1-based
     const endDate = new Date(year, month, 0, 23, 59, 59, 999); // Last day of month
@@ -10,18 +10,20 @@ class CalendarService {
       parentId: userId,
       OR: [
         {
+          // Events that start in this month
           startDate: {
             gte: startDate,
             lte: endDate
           }
         },
         {
+          // Multi-day events that span into this month
           AND: [
             { startDate: { lte: endDate } },
             { 
               OR: [
                 { endDate: { gte: startDate } },
-                { endDate: null }
+                { endDate: null } // All-day events without end date
               ]
             }
           ]
@@ -29,6 +31,7 @@ class CalendarService {
       ]
     };
 
+    // Add child filter if specified
     if (childId) {
       whereClause.OR = whereClause.OR.map(condition => ({
         ...condition,
@@ -55,6 +58,7 @@ class CalendarService {
     return events;
   }
 
+  // Get events for a specific date range
   async getEventsByDateRange(userId, startDate, endDate, childId = null) {
     const whereClause = {
       parentId: userId,
@@ -100,6 +104,7 @@ class CalendarService {
     });
   }
 
+  // Get upcoming events (next 7 days)
   async getUpcomingEvents(userId, childId = null, days = 7) {
     const now = new Date();
     const futureDate = new Date();
@@ -131,10 +136,11 @@ class CalendarService {
         { startDate: 'asc' },
         { title: 'asc' }
       ],
-      take: 10
+      take: 10 // Limit to 10 upcoming events
     });
   }
 
+  // Get event statistics for dashboard
   async getEventStatistics(userId, childId = null) {
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -148,6 +154,7 @@ class CalendarService {
       whereClause.childId = parseInt(childId);
     }
 
+    // Get counts for different time periods
     const [
       totalEvents,
       thisMonthEvents,
@@ -155,8 +162,10 @@ class CalendarService {
       overdueEvents,
       eventsByType
     ] = await Promise.all([
+      // Total events
       prisma.event.count({ where: whereClause }),
 
+      // This month's events
       prisma.event.count({
         where: {
           ...whereClause,
@@ -167,6 +176,7 @@ class CalendarService {
         }
       }),
 
+      // Upcoming events (next 7 days)
       prisma.event.count({
         where: {
           ...whereClause,
@@ -177,6 +187,7 @@ class CalendarService {
         }
       }),
 
+      // Overdue events (past events that might need attention)
       prisma.event.count({
         where: {
           ...whereClause,
@@ -189,6 +200,7 @@ class CalendarService {
         }
       }),
 
+      // Events by type
       prisma.event.groupBy({
         by: ['type'],
         where: whereClause,
@@ -210,15 +222,17 @@ class CalendarService {
     };
   }
 
+  // Generate calendar grid for a month (including previous/next month dates)
   generateCalendarGrid(year, month) {
     const firstDay = new Date(year, month - 1, 1);
     const lastDay = new Date(year, month, 0);
-    const firstDayOfWeek = firstDay.getDay();
+    const firstDayOfWeek = firstDay.getDay(); // 0 = Sunday, 1 = Monday, etc.
     const daysInMonth = lastDay.getDate();
 
     const calendar = [];
     let currentDate = new Date(firstDay);
 
+    // Add days from previous month if needed
     if (firstDayOfWeek > 0) {
       const prevMonth = new Date(year, month - 2, 0);
       const daysFromPrevMonth = prevMonth.getDate() - firstDayOfWeek + 1;
@@ -233,6 +247,7 @@ class CalendarService {
       }
     }
 
+    // Add days from current month
     for (let day = 1; day <= daysInMonth; day++) {
       calendar.push({
         date: new Date(year, month - 1, day),
@@ -242,6 +257,7 @@ class CalendarService {
       });
     }
 
+    // Add days from next month to complete the grid (42 days = 6 weeks)
     const remainingDays = 42 - calendar.length;
     for (let day = 1; day <= remainingDays; day++) {
       calendar.push({
@@ -255,6 +271,7 @@ class CalendarService {
     return calendar;
   }
 
+  // Get default event colors by type
   getEventTypeColors() {
     return {
       SCHOOL_EVENT: '#3B82F6',      // Blue
@@ -270,6 +287,7 @@ class CalendarService {
     };
   }
 
+  // Format event for calendar display
   formatEventForCalendar(event) {
     const colors = this.getEventTypeColors();
     
@@ -292,15 +310,17 @@ class CalendarService {
     };
   }
 
+  // Check if events overlap
   doEventsOverlap(event1, event2) {
     const start1 = new Date(event1.startDate);
-    const end1 = event1.endDate ? new Date(event1.endDate) : new Date(start1.getTime() + 60 * 60 * 1000);
+    const end1 = event1.endDate ? new Date(event1.endDate) : new Date(start1.getTime() + 60 * 60 * 1000); // 1 hour default
     const start2 = new Date(event2.startDate);
     const end2 = event2.endDate ? new Date(event2.endDate) : new Date(start2.getTime() + 60 * 60 * 1000);
 
     return start1 < end2 && start2 < end1;
   }
 
+  // Get conflicting events for a new event
   async getConflictingEvents(userId, startDate, endDate, excludeEventId = null) {
     const whereClause = {
       parentId: userId,

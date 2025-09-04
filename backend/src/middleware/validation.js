@@ -1,5 +1,6 @@
 import { body, validationResult } from "express-validator";
 
+// Validation middleware
 export const validateRequest = (req, res, next) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -15,6 +16,7 @@ export const validateRequest = (req, res, next) => {
   next();
 };
 
+// Registration validation
 export const validateRegistration = [
   body("username")
     .trim()
@@ -37,6 +39,7 @@ export const validateRegistration = [
   validateRequest
 ];
 
+// Login validation
 export const validateLogin = [
   body("email")
     .isEmail()
@@ -50,6 +53,7 @@ export const validateLogin = [
   validateRequest
 ];
 
+// Forgot password validation
 export const validateForgotPassword = [
   body("email")
     .isEmail()
@@ -59,6 +63,7 @@ export const validateForgotPassword = [
   validateRequest
 ];
 
+// Reset password validation
 export const validateResetPassword = [
   body("password")
     .isLength({ min: 8 })
@@ -69,6 +74,27 @@ export const validateResetPassword = [
   validateRequest
 ];
 
+// User profile update validation
+export const validateUserProfileUpdate = [
+  body("username")
+    .optional()
+    .trim()
+    .isLength({ min: 3, max: 50 })
+    .withMessage("Username must be between 3 and 50 characters")
+    .matches(/^[a-zA-Z0-9_-]+$/)
+    .withMessage("Username can only contain letters, numbers, underscores, and hyphens"),
+  
+  body("email")
+    .optional()
+    .trim()
+    .isEmail()
+    .normalizeEmail()
+    .withMessage("Please provide a valid email address"),
+  
+  validateRequest
+];
+
+// Child validation
 export const validateChild = [
   body("name")
     .trim()
@@ -110,6 +136,7 @@ export const validateChild = [
   validateRequest
 ];
 
+// Update child validation (allows partial updates)
 export const validateChildUpdate = [
   body("name")
     .optional()
@@ -151,9 +178,17 @@ export const validateChildUpdate = [
       return true;
     }),
   
+  // COMMENTED OUT - Google Classroom Integration
+  // body("googleClassroomEmail")
+  //   .optional()
+  //   .isEmail()
+  //   .normalizeEmail()
+  //   .withMessage("Google Classroom email must be a valid email address"),
+  
   validateRequest
 ];
 
+// Event validation
 export const validateEvent = [
   body("title")
     .trim()
@@ -172,6 +207,7 @@ export const validateEvent = [
     .custom((value) => {
       const startDate = new Date(value);
       const now = new Date();
+      // Allow events from yesterday to accommodate timezone differences
       const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
       if (startDate < yesterday) {
         throw new Error("Start date cannot be in the past");
@@ -231,6 +267,7 @@ export const validateEvent = [
   validateRequest
 ];
 
+// Update event validation (allows partial updates)
 export const validateEventUpdate = [
   body("title")
     .optional()

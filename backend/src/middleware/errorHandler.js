@@ -1,7 +1,8 @@
+// Global error handling middleware
 export const errorHandler = (err, req, res, next) => {
   console.error("Error:", err);
 
-
+  // Prisma errors
   if (err.code === 'P2002') {
     return res.status(400).json({
       success: false,
@@ -18,7 +19,7 @@ export const errorHandler = (err, req, res, next) => {
     });
   }
 
-
+  // JWT errors
   if (err.name === 'JsonWebTokenError') {
     return res.status(401).json({
       success: false,
@@ -33,7 +34,7 @@ export const errorHandler = (err, req, res, next) => {
     });
   }
 
-
+  // Validation errors
   if (err.name === 'ValidationError') {
     return res.status(400).json({
       success: false,
@@ -42,7 +43,7 @@ export const errorHandler = (err, req, res, next) => {
     });
   }
 
-
+  // Default error response
   res.status(err.status || 500).json({
     success: false,
     msg: err.message || "Internal server error",
@@ -50,7 +51,7 @@ export const errorHandler = (err, req, res, next) => {
   });
 };
 
-
+// 404 handler
 export const notFoundHandler = (req, res) => {
   res.status(404).json({
     success: false,

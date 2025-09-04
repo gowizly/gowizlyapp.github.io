@@ -7,12 +7,14 @@ import { sendEmail } from "../utils/sendEmail.js";
 import { getVerificationEmailTemplate, getPasswordResetEmailTemplate, getWelcomeEmailTemplate } from "../utils/emailTemplates.js";
 import { logInfo, logError, logWarn, logDebug } from "../utils/logger.js";
 
+// Register
 export const register = async (req, res) => {
   try {
     const { username, email, password } = req.body;
     
     logInfo('User registration attempt', { username, email });
 
+    // Check if user already exists
     const existingUser = await prisma.user.findFirst({
       where: {
         OR: [
@@ -39,10 +41,12 @@ export const register = async (req, res) => {
       }
     }
 
+    // Hash password
     const saltRounds = 12;
     logDebug('Hashing password', { saltRounds });
     const hashedPassword = await bcrypt.hash(password, saltRounds);
 
+    // Create user
     logDebug('Creating new user in database', { username, email });
     const user = await prisma.user.create({
       data: {
@@ -61,6 +65,7 @@ export const register = async (req, res) => {
 
     logInfo('User created successfully', { userId: user.id, username: user.username, email: user.email });
 
+    // Generate verification token (expires in 24 hours)
     const verifyToken = jwt.sign(
       { id: user.id, type: 'verification' },
       process.env.JWT_SECRET,
@@ -69,6 +74,7 @@ export const register = async (req, res) => {
 
     const verifyLink = `${process.env.SERVER_URL}/api/auth/verify/${verifyToken}`;
     
+    // Send verification email with template
     logDebug('Sending verification email', { email, userId: user.id });
     const emailTemplate = getVerificationEmailTemplate(username, verifyLink);
     await sendEmail(email, "Verify Your GoWizly Account", emailTemplate);
@@ -88,7 +94,7 @@ export const register = async (req, res) => {
       }
     });
   } catch (error) {
-    logError("Registration error", error, { username, email });
+    logError("Registration error", error, { username: req.body?.username, email: req.body?.email });
     res.status(500).json({
       success: false,
       msg: "Internal server error. Please try again later."
@@ -96,16 +102,19 @@ export const register = async (req, res) => {
   }
 };
 
+// Verify Email
 export const verifyEmail = async (req, res) => {
   try {
     const token = req.params.token;
     
     logInfo('Email verification attempt', { tokenLength: token.length });
     
+    // Verify and decode token
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     
     logDebug('Token decoded successfully', { userId: decoded.id, tokenType: decoded.type });
     
+    // Check if token is for verification
     if (decoded.type !== 'verification') {
       logWarn('Invalid token type for verification', { tokenType: decoded.type, userId: decoded.id });
       return res.status(400).json({
@@ -114,6 +123,7 @@ export const verifyEmail = async (req, res) => {
       });
     }
 
+    // Find user
     const user = await prisma.user.findUnique({
       where: { id: decoded.id },
       select: {
@@ -140,6 +150,7 @@ export const verifyEmail = async (req, res) => {
       });
     }
 
+    // Update user verification status
     logDebug('Updating user verification status', { userId: user.id });
     const updatedUser = await prisma.user.update({
       where: { id: user.id },
@@ -155,6 +166,7 @@ export const verifyEmail = async (req, res) => {
 
     logInfo('User email verified successfully', { userId: user.id, email: user.email });
 
+    // Send welcome email
     logDebug('Sending welcome email', { userId: user.id, email: user.email });
     const welcomeTemplate = getWelcomeEmailTemplate(user.username);
     await sendEmail(user.email, "Welcome to GoWizly!", welcomeTemplate);
@@ -183,13 +195,14 @@ export const verifyEmail = async (req, res) => {
   }
 };
 
+// Login
 export const login = async (req, res) => {
-  const email = req.body?.email; // Extract email early for error logging
   try {
-    const { password } = req.body;
+    const { email, password } = req.body;
     
     logInfo('Login attempt', { email });
 
+    // Find user by email
     const user = await prisma.user.findUnique({
       where: { email },
       select: {
@@ -219,6 +232,7 @@ export const login = async (req, res) => {
       });
     }
 
+    // Check password
     logDebug('Validating password', { userId: user.id });
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
@@ -229,9 +243,11 @@ export const login = async (req, res) => {
       });
     }
 
+    // Generate token
     logDebug('Generating JWT token', { userId: user.id });
     const token = generateToken(user);
 
+    // Remove password from response
     const { password: _, ...userWithoutPassword } = user;
     
     logInfo('Login successful', { userId: user.id, email, username: user.username });
@@ -245,7 +261,7 @@ export const login = async (req, res) => {
       }
     });
   } catch (error) {
-    logError("Login error", error, { email });
+    logError("Login error", error, { email: req.body?.email });
     res.status(500).json({
       success: false,
       msg: "Internal server error"
@@ -253,6 +269,7 @@ export const login = async (req, res) => {
   }
 };
 
+// Forgot Password
 export const forgotPassword = async (req, res) => {
   try {
     const { email } = req.body;
@@ -267,6 +284,7 @@ export const forgotPassword = async (req, res) => {
       }
     });
 
+    // Always return success message for security (don't reveal if email exists)
     const successResponse = {
       success: true,
       msg: "If an account with this email exists, you will receive a password reset link."
@@ -280,9 +298,11 @@ export const forgotPassword = async (req, res) => {
       return res.json(successResponse);
     }
 
+    // Generate secure reset token
     const resetToken = crypto.randomBytes(32).toString("hex");
-    const resetTokenExpire = new Date(Date.now() + 3600000);
+    const resetTokenExpire = new Date(Date.now() + 3600000); // 1 hour
 
+    // Save reset token to database
     await prisma.user.update({
       where: { id: user.id },
       data: {
@@ -291,6 +311,7 @@ export const forgotPassword = async (req, res) => {
       }
     });
 
+    // Send password reset email
     const resetLink = `${process.env.CLIENT_URL}/reset-password/${resetToken}`;
     const emailTemplate = getPasswordResetEmailTemplate(user.username, resetLink);
     await sendEmail(email, "Reset Your GoWizly Password", emailTemplate);
@@ -305,12 +326,14 @@ export const forgotPassword = async (req, res) => {
   }
 };
 
+// Validate Reset Token (GET request to check if token is valid)
 export const validateResetToken = async (req, res) => {
   try {
     const { token } = req.params;
     
     logInfo('Password reset token validation', { tokenLength: token.length });
 
+    // Find user with valid reset token
     const user = await prisma.user.findFirst({
       where: {
         resetToken: token,
@@ -350,11 +373,13 @@ export const validateResetToken = async (req, res) => {
   }
 };
 
+// Reset Password
 export const resetPassword = async (req, res) => {
   try {
     const { token } = req.params;
     const { password } = req.body;
 
+    // Find user with valid reset token
     const user = await prisma.user.findFirst({
       where: {
         resetToken: token,
@@ -375,9 +400,11 @@ export const resetPassword = async (req, res) => {
       });
     }
 
+    // Hash new password
     const saltRounds = 12;
     const hashedPassword = await bcrypt.hash(password, saltRounds);
 
+    // Update password and clear reset token
     await prisma.user.update({
       where: { id: user.id },
       data: {
@@ -400,10 +427,11 @@ export const resetPassword = async (req, res) => {
   }
 };
 
-
+// Logout (for token invalidation - client-side mainly)
 export const logout = async (req, res) => {
   try {
-
+    // In a JWT setup, logout is mainly handled client-side by removing the token
+    // But we can log the action for security purposes
     res.json({
       success: true,
       msg: "Logged out successfully"
@@ -417,7 +445,7 @@ export const logout = async (req, res) => {
   }
 };
 
-
+// Get current user profile
 export const getCurrentUser = async (req, res) => {
   try {
     const user = await prisma.user.findUnique({
@@ -437,6 +465,8 @@ export const getCurrentUser = async (req, res) => {
             schoolName: true,
             birthDate: true,
             profilePhoto: true,
+            // COMMENTED OUT - Google Classroom Integration
+            // googleClassroomEnabled: true,
             createdAt: true
           },
           orderBy: { createdAt: 'asc' }
@@ -469,7 +499,7 @@ export const getCurrentUser = async (req, res) => {
   }
 };
 
-
+// OAuth Callback Handler
 export const handleOAuthCallback = async (req, res) => {
   const { token, error } = req.query;
   
@@ -502,7 +532,7 @@ export const handleOAuthCallback = async (req, res) => {
   });
 };
 
-
+// Google OAuth Callback Handler
 export const handleGoogleCallback = async (req, res) => {
   try {
     logInfo('Google OAuth callback received', { userId: req.user?.id });
@@ -512,7 +542,7 @@ export const handleGoogleCallback = async (req, res) => {
       return res.redirect(`${process.env.SERVER_URL}/api/auth/callback?error=no_user_data`);
     }
 
-
+    // Generate JWT token for the OAuth user
     const token = jwt.sign(
       { id: req.user.id },
       process.env.JWT_SECRET,
@@ -521,6 +551,7 @@ export const handleGoogleCallback = async (req, res) => {
     
     logInfo('OAuth callback - JWT generated, redirecting', { userId: req.user.id });
     
+    // Redirect to server URL with token
     res.redirect(`${process.env.SERVER_URL}/api/auth/callback?token=${token}`);
   } catch (error) {
     logError("OAuth callback error", error, { userId: req.user?.id });
@@ -528,7 +559,7 @@ export const handleGoogleCallback = async (req, res) => {
   }
 };
 
-
+// Resend verification email
 export const resendVerification = async (req, res) => {
   try {
     const { email } = req.body;
@@ -557,7 +588,7 @@ export const resendVerification = async (req, res) => {
       });
     }
 
-
+    // Generate new verification token
     const verifyToken = jwt.sign(
       { id: user.id, type: 'verification' },
       process.env.JWT_SECRET,
@@ -566,7 +597,7 @@ export const resendVerification = async (req, res) => {
 
     const verifyLink = `${process.env.SERVER_URL}/api/auth/verify/${verifyToken}`;
     
-    
+    // Send verification email
     const emailTemplate = getVerificationEmailTemplate(user.username, verifyLink);
     await sendEmail(email, "Verify Your GoWizly Account", emailTemplate);
 
@@ -576,6 +607,101 @@ export const resendVerification = async (req, res) => {
     });
   } catch (error) {
     console.error("Resend verification error:", error);
+    res.status(500).json({
+      success: false,
+      msg: "Internal server error"
+    });
+  }
+};
+
+// Update user profile
+export const updateUserProfile = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const updateData = {};
+
+    // Only include fields that are provided
+    const allowedFields = ['username', 'email'];
+    
+    allowedFields.forEach(field => {
+      if (req.body[field] !== undefined) {
+        updateData[field] = req.body[field];
+      }
+    });
+
+    if (Object.keys(updateData).length === 0) {
+      return res.status(400).json({
+        success: false,
+        msg: "No valid fields provided for update"
+      });
+    }
+
+    // Check if username already exists (if updating username)
+    if (updateData.username) {
+      const existingUser = await prisma.user.findUnique({
+        where: { 
+          username: updateData.username,
+          NOT: { id: userId }
+        }
+      });
+
+      if (existingUser) {
+        return res.status(400).json({
+          success: false,
+          msg: "Username already exists"
+        });
+      }
+    }
+
+    // Check if email already exists (if updating email)
+    if (updateData.email) {
+      const existingUser = await prisma.user.findUnique({
+        where: { 
+          email: updateData.email,
+          NOT: { id: userId }
+        }
+      });
+
+      if (existingUser) {
+        return res.status(400).json({
+          success: false,
+          msg: "Email already exists"
+        });
+      }
+
+      // If email is being updated, mark as unverified
+      updateData.isVerified = false;
+    }
+
+    updateData.updatedAt = new Date();
+
+    // Update user profile
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data: updateData,
+      select: {
+        id: true,
+        username: true,
+        email: true,
+        isVerified: true,
+        createdAt: true,
+        updatedAt: true
+      }
+    });
+
+    logInfo("User profile updated successfully", { 
+      userId,
+      updatedFields: Object.keys(updateData)
+    });
+
+    res.json({
+      success: true,
+      msg: "Profile updated successfully",
+      data: { user: updatedUser }
+    });
+
+  } catch (error) {
+    logError("Update user profile error", error, { userId: req.user?.id });
     res.status(500).json({
       success: false,
       msg: "Internal server error"
