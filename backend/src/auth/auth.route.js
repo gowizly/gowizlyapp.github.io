@@ -66,12 +66,13 @@ if (process.env.NODE_ENV === 'development') {
 // Google OAuth Routes
 router.get("/google", passport.authenticate("google", { scope: ["profile", "email"] }));
 
-// OAuth success callback handler (receives the token or error)
-router.get("/callback", handleOAuthCallback);
-
+// Google OAuth callback - handles the response from Google
 router.get("/google/callback", 
-  passport.authenticate("google", { failureRedirect: `${process.env.SERVER_URL}/api/auth/callback?error=oauth_failed` }),
+  passport.authenticate("google", { failureRedirect: `${process.env.CLIENT_URL}/auth/error?error=oauth_failed` }),
   handleGoogleCallback
 );
+
+// OAuth success callback handler (receives the token or error from frontend)
+router.get("/callback", handleOAuthCallback);
 
 export default router;

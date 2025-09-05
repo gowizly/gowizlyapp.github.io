@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Mail, ArrowLeft, CheckCircle, Loader } from 'lucide-react';
 import { API_BASE_URL } from '../config/environment';
+import { useToast } from '../contexts/ToastContext';
 
 interface ForgotPasswordState {
   email: string;
@@ -12,6 +13,7 @@ interface ForgotPasswordState {
 
 const ForgotPassword: React.FC = () => {
   const navigate = useNavigate();
+  const { showSuccess, showError } = useToast();
   const [formData, setFormData] = useState<ForgotPasswordState>({
     email: '',
     isSubmitting: false,
@@ -67,21 +69,29 @@ const ForgotPassword: React.FC = () => {
           success: true,
           error: ''
         }));
+        showSuccess(
+          'Reset Email Sent!',
+          'Please check your email for password reset instructions.'
+        );
       } else {
         console.error('❌ Forgot password request failed:', data.msg);
+        const errorMessage = data.msg || 'Failed to send reset email';
         setFormData(prev => ({
           ...prev,
           isSubmitting: false,
-          error: data.msg || 'Failed to send reset email'
+          error: errorMessage
         }));
+        showError('Password Reset Failed', errorMessage);
       }
     } catch (error) {
       console.error('❌ Forgot password error:', error);
+      const errorMessage = 'Network error. Please try again.';
       setFormData(prev => ({
         ...prev,
         isSubmitting: false,
-        error: 'Network error. Please try again.'
+        error: errorMessage
       }));
+      showError('Network Error', errorMessage);
     }
   };
 

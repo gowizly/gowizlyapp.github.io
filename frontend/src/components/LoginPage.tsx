@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Calendar, User, Lock, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { useToast } from '../contexts/ToastContext';
 
 interface LoginPageProps {
   onSwitchToSignup: () => void;
@@ -11,6 +12,7 @@ interface LoginPageProps {
 const LoginPage: React.FC<LoginPageProps> = ({ onSwitchToSignup, onForgotPassword }) => {
   const { login, googleLogin, isLoading } = useAuth();
   const navigate = useNavigate();
+  const { showError } = useToast();
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -71,13 +73,17 @@ const LoginPage: React.FC<LoginPageProps> = ({ onSwitchToSignup, onForgotPasswor
       
       if (!success) {
         console.log('❌ LoginPage: Login failed');
-        setErrors({ general: 'Invalid email or password. Please try again.' });
+        const errorMessage = 'Invalid email or password. Please try again.';
+        setErrors({ general: errorMessage });
+        showError('Login Failed', errorMessage);
       } else {
         console.log('✅ LoginPage: Login successful!');
       }
     } catch (error) {
       console.error('❌ LoginPage: Login error:', error);
-      setErrors({ general: 'An error occurred. Please try again.' });
+      const errorMessage = 'An error occurred. Please try again.';
+      setErrors({ general: errorMessage });
+      showError('Login Error', errorMessage);
     } finally {
       setIsSubmitting(false);
     }

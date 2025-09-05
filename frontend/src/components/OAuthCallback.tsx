@@ -16,8 +16,14 @@ const OAuthCallback: React.FC = () => {
       try {
         const token = searchParams.get('token');
         const error = searchParams.get('error');
+        const currentUrl = window.location.href;
 
-        console.log('🔐 OAuth callback received:', { hasToken: !!token, error });
+        console.log('🔐 OAuth callback received:', { 
+          hasToken: !!token, 
+          error, 
+          currentUrl,
+          searchParams: Object.fromEntries(searchParams.entries())
+        });
 
         if (error) {
           console.error('❌ OAuth error:', error);
@@ -35,24 +41,48 @@ const OAuthCallback: React.FC = () => {
 
         // Validate token with backend and get user data
         console.log('🔄 Validating OAuth token...');
-        const response = await fetch(`${API_BASE_URL}/me`, {
+        const meEndpoint = `${API_BASE_URL}/api/auth/me`;
+        console.log('🌐 Making request to:', meEndpoint);
+        
+        const response = await fetch(meEndpoint, {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
           }
         });
 
+        console.log('📡 Token validation response:', response.status, response.statusText);
+
         if (!response.ok) {
-          console.error('❌ Token validation failed:', response.status);
+          const errorText = await response.text();
+          console.error('❌ Token validation failed:', {
+            status: response.status,
+            statusText: response.statusText,
+            errorText: errorText.substring(0, 200)
+          });
           setStatus('error');
           setMessage('Authentication token validation failed');
           return;
         }
 
-        const userData = await response.json();
+        const responseText = await response.text();
+        console.log('📡 Raw response:', responseText.substring(0, 200));
+        
+        let userData;
+        try {
+          userData = JSON.parse(responseText);
+        } catch (parseError) {
+          console.error('❌ JSON parse error:', parseError);
+          console.error('❌ Response was:', responseText.substring(0, 500));
+          setStatus('error');
+          setMessage('Invalid response format from server');
+          return;
+        }
         console.log('✅ OAuth user data received:', userData);
 
         // Set authentication state
+        console.log('🔄 Setting OAuth authentication state...');
+        setIsEmailVerified(true); // Set this first
         setToken(token);
         setUser({
           id: (userData.id || userData.userId || 'temp_id').toString(),
@@ -60,7 +90,7 @@ const OAuthCallback: React.FC = () => {
           email: userData.email,
           username: userData.username
         });
-        setIsEmailVerified(true); // OAuth users are considered verified
+        console.log('✅ OAuth authentication state set');
 
         setStatus('success');
         setMessage('Authentication successful! Redirecting...');

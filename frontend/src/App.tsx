@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import './App.css';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { ToastProvider } from './contexts/ToastContext';
 import AuthWrapper from './components/AuthWrapper';
 import FamilyCalendarApp from './components/FamilyCalendar';
 import ForgotPassword from './components/ForgotPassword';
@@ -9,6 +10,7 @@ import ResetPassword from './components/ResetPassword';
 import OAuthCallback from './components/OAuthCallback';
 import ErrorBoundary from './components/ErrorBoundary';
 import EmailVerificationPage from './components/EmailVerification';
+import ToastContainer from './components/ToastContainer';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated, isLoading } = useAuth();
@@ -49,8 +51,9 @@ function App() {
     <ErrorBoundary>
       <Router>
         <AuthProvider>
-          <div className="App">
-            <Routes>
+          <ToastProvider>
+            <div className="App">
+              <Routes>
               {/* Protected Routes */}
               <Route 
                 path="/" 
@@ -95,13 +98,25 @@ function App() {
                 element={<OAuthCallback />} 
               />
               
+              <Route 
+                path="/auth/success" 
+                element={<OAuthCallback />} 
+              />
+              
+              <Route 
+                path="/auth/error" 
+                element={<OAuthCallback />} 
+              />
+              
               {/* Catch all route */}
               <Route 
                 path="*" 
                 element={<Navigate to="/" replace />} 
               />
-            </Routes>
-          </div>
+              </Routes>
+              <ToastContainer />
+            </div>
+          </ToastProvider>
         </AuthProvider>
       </Router>
     </ErrorBoundary>
