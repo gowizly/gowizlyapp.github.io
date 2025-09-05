@@ -147,11 +147,19 @@ const ChildManagement: React.FC<ChildManagementProps> = ({ onBack }) => {
 
   const openEditModal = (child: Child) => {
     setEditingChild(child);
+    
+    // Convert ISO date to YYYY-MM-DD format for date input
+    const formatDateForInput = (isoDate: string) => {
+      if (!isoDate) return '';
+      const date = new Date(isoDate);
+      return date.toISOString().split('T')[0];
+    };
+    
     setFormData({
       name: child.name,
       gradeLevel: child.gradeLevel,
       schoolName: child.schoolName,
-      birthDate: child.birthDate,
+      birthDate: formatDateForInput(child.birthDate),
     });
     setShowAddModal(true);
   };

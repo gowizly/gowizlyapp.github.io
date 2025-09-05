@@ -72,7 +72,7 @@ export const register = async (req, res) => {
       { expiresIn: '24h' }
     );
 
-    const verifyLink = `${process.env.SERVER_URL}/api/auth/verify/${verifyToken}`;
+    const verifyLink = `${process.env.CLIENT_URL}/verify/${verifyToken}`;
     
     // Send verification email with template
     logDebug('Sending verification email', { email, userId: user.id });
@@ -539,7 +539,7 @@ export const handleGoogleCallback = async (req, res) => {
     
     if (!req.user) {
       logError('OAuth callback - No user data received');
-      return res.redirect(`${process.env.SERVER_URL}/api/auth/callback?error=no_user_data`);
+      return res.redirect(`${process.env.CLIENT_URL}/auth/error?error=no_user_data`);
     }
 
     // Generate JWT token for the OAuth user
@@ -551,11 +551,11 @@ export const handleGoogleCallback = async (req, res) => {
     
     logInfo('OAuth callback - JWT generated, redirecting', { userId: req.user.id });
     
-    // Redirect to server URL with token
-    res.redirect(`${process.env.SERVER_URL}/api/auth/callback?token=${token}`);
+    // Redirect to frontend auth success page with token
+    res.redirect(`${process.env.CLIENT_URL}/auth/success?token=${token}`);
   } catch (error) {
     logError("OAuth callback error", error, { userId: req.user?.id });
-    res.redirect(`${process.env.SERVER_URL}/api/auth/callback?error=oauth_callback_failed`);
+    res.redirect(`${process.env.CLIENT_URL}/auth/error?error=oauth_callback_failed`);
   }
 };
 
@@ -595,7 +595,7 @@ export const resendVerification = async (req, res) => {
       { expiresIn: '24h' }
     );
 
-    const verifyLink = `${process.env.SERVER_URL}/api/auth/verify/${verifyToken}`;
+    const verifyLink = `${process.env.CLIENT_URL}/api/auth/verify/${verifyToken}`;
     
     // Send verification email
     const emailTemplate = getVerificationEmailTemplate(user.username, verifyLink);

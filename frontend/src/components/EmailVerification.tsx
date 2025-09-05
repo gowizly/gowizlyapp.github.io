@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Mail, CheckCircle, AlertCircle, Loader, Calendar, RefreshCw } from 'lucide-react';
 import { API_BASE_URL } from '../config/environment';
+import { useToast } from '../contexts/ToastContext';
 
 interface VerificationState {
   isLoading: boolean;
@@ -16,6 +17,7 @@ interface VerificationState {
 const EmailVerificationPage: React.FC = () => {
   const { token } = useParams<{ token: string }>();
   const navigate = useNavigate();
+  const { showSuccess, showError } = useToast();
   
   const [verificationState, setVerificationState] = useState<VerificationState>({
     isLoading: true,
@@ -56,32 +58,41 @@ const EmailVerificationPage: React.FC = () => {
 
       if (response.ok && data.success) {
         console.log('✅ Email verification successful');
+        const userInfo = {
+          username: data.data?.user?.username || 'User',
+          email: data.data?.user?.email || ''
+        };
         setVerificationState({
           isLoading: false,
           success: true,
           error: null,
-          userInfo: {
-            username: data.data?.user?.username || 'User',
-            email: data.data?.user?.email || ''
-          }
+          userInfo
         });
+        showSuccess(
+          'Email Verified Successfully!',
+          `Welcome ${userInfo.username}! Your account is now active.`
+        );
       } else {
         console.error('❌ Email verification failed:', data.msg);
+        const errorMessage = data.msg || 'Email verification failed';
         setVerificationState({
           isLoading: false,
           success: false,
-          error: data.msg || 'Email verification failed',
+          error: errorMessage,
           userInfo: null
         });
+        showError('Email Verification Failed', errorMessage);
       }
     } catch (error) {
       console.error('❌ Email verification error:', error);
+      const errorMessage = 'Network error. Please try again later.';
       setVerificationState({
         isLoading: false,
         success: false,
-        error: 'Network error. Please try again later.',
+        error: errorMessage,
         userInfo: null
       });
+      showError('Network Error', errorMessage);
     }
   };
 
@@ -112,13 +123,14 @@ const EmailVerificationPage: React.FC = () => {
       console.log('📧 Resend verification response:', data);
 
       if (response.ok && data.success) {
-        alert('Verification email sent! Please check your inbox.');
+        showSuccess('Verification Email Sent!', 'Please check your inbox for the verification link.');
       } else {
-        alert(data.msg || 'Failed to resend verification email');
+        const errorMessage = data.msg || 'Failed to resend verification email';
+        showError('Failed to Resend Email', errorMessage);
       }
     } catch (error) {
       console.error('❌ Resend verification error:', error);
-      alert('Network error. Please try again later.');
+      showError('Network Error', 'Network error. Please try again later.');
     } finally {
       setIsResending(false);
     }

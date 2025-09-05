@@ -19,6 +19,7 @@ interface CalendarViewProps {
   children: LocalChild[];
   events: Event[];
   onAddEvent: () => void;
+  onEventClick?: (event: Event) => void;
 }
 
 const CalendarView: React.FC<CalendarViewProps> = ({
@@ -28,7 +29,8 @@ const CalendarView: React.FC<CalendarViewProps> = ({
   onChildChange,
   children,
   events,
-  onAddEvent
+  onAddEvent,
+  onEventClick
 }) => {
   const eventTypes = {
     ASSIGNMENT_DUE: { color: 'bg-purple-500', label: 'Assignment Due' },
@@ -185,8 +187,9 @@ const CalendarView: React.FC<CalendarViewProps> = ({
                     title={`${event.title} - ${eventPriorities[event.priority]?.label || 'Medium'} Priority\nClick to edit`}
                     onClick={(e) => {
                       e.stopPropagation();
-                      // TODO: Implement event editing
-                      console.log('✏️ Edit event:', event.id);
+                      if (onEventClick) {
+                        onEventClick(event);
+                      }
                     }}
                   >
                     {event.title.length > 12 ? event.title.substring(0, 12) + '...' : event.title}

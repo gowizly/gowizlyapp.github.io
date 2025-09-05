@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Calendar, User, Lock, Mail, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { useToast } from '../contexts/ToastContext';
 
 interface SignupPageProps {
   onSwitchToLogin: () => void;
@@ -8,6 +9,7 @@ interface SignupPageProps {
 
 const SignupPage: React.FC<SignupPageProps> = ({ onSwitchToLogin }) => {
   const { signup, isLoading } = useAuth();
+  const { showSuccess, showError } = useToast();
   const [formData, setFormData] = useState({
     username: '',
     email: '',
@@ -66,14 +68,20 @@ const SignupPage: React.FC<SignupPageProps> = ({ onSwitchToLogin }) => {
     try {
       const result = await signup(formData.username, formData.email, formData.password, formData.acceptTerms);
       if (!result.success) {
-        setErrors({ general: result.message || 'Failed to create account. Please try again.' });
+        const errorMessage = result.message || 'Failed to create account. Please try again.';
+        setErrors({ general: errorMessage });
+        showError('Registration Failed', errorMessage);
       } else if (result.needsVerification) {
-        // In real app, this would redirect to email verification page
-        alert(result.message);
+        showSuccess(
+          'Account Created Successfully!', 
+          'Please check your email and click the verification link to activate your account.'
+        );
         onSwitchToLogin();
       }
     } catch (error) {
-      setErrors({ general: 'An error occurred. Please try again.' });
+      const errorMessage = 'An error occurred. Please try again.';
+      setErrors({ general: errorMessage });
+      showError('Registration Error', errorMessage);
     } finally {
       setIsSubmitting(false);
     }

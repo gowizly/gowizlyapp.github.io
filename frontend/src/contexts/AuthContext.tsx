@@ -63,6 +63,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [isEmailVerified, setIsEmailVerified] = useState(false);
 
   const isAuthenticated = !!user && !!token && isEmailVerified;
+  
+  // Debug authentication state changes
+  React.useEffect(() => {
+    console.log('🔍 Auth state changed:', {
+      hasUser: !!user,
+      hasToken: !!token,
+      isEmailVerified,
+      isAuthenticated,
+      userName: user?.name
+    });
+  }, [user, token, isEmailVerified, isAuthenticated]);
 
   // Fetch user profile from API
   const fetchUserProfile = async (token: string): Promise<User | null> => {
