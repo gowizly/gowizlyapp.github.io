@@ -3,7 +3,7 @@ service: default
 
 env_variables:
   NODE_ENV: "production"
-  DATABASE_URL: "mysql://root:Instance_pass@unix(/cloudsql/hardy-being-469601-g3:us-central1:root)/gowizlyapp_db"
+  DATABASE_URL: "mysql://root:IA|8ciHi)sFGhE0y@unix(/cloudsql/hardy-being-469601-g3:us-central1:root)/gowizlyapp_db"
 
 automatic_scaling:
   min_instances: 0
