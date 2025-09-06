@@ -465,8 +465,6 @@ export const getCurrentUser = async (req, res) => {
             schoolName: true,
             birthDate: true,
             profilePhoto: true,
-            // COMMENTED OUT - Google Classroom Integration
-            // googleClassroomEnabled: true,
             createdAt: true
           },
           orderBy: { createdAt: 'asc' }

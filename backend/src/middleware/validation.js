@@ -177,14 +177,7 @@ export const validateChildUpdate = [
       }
       return true;
     }),
-  
-  // COMMENTED OUT - Google Classroom Integration
-  // body("googleClassroomEmail")
-  //   .optional()
-  //   .isEmail()
-  //   .normalizeEmail()
-  //   .withMessage("Google Classroom email must be a valid email address"),
-  
+
   validateRequest
 ];
 
