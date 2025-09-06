@@ -153,7 +153,7 @@ const EmailVerificationPage: React.FC = () => {
         <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md">
           <div className="text-center mb-8">
             <Calendar className="w-12 h-12 text-purple-600 mx-auto mb-2" />
-            <h1 className="text-2xl font-bold text-gray-800">Family Calendar</h1>
+            <h1 className="text-2xl font-bold text-gray-800">GoWizly Calendar</h1>
           </div>
           
           <div className="text-center">
@@ -173,7 +173,7 @@ const EmailVerificationPage: React.FC = () => {
         <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md">
           <div className="text-center mb-8">
             <Calendar className="w-12 h-12 text-purple-600 mx-auto mb-2" />
-            <h1 className="text-2xl font-bold text-gray-800">Family Calendar</h1>
+            <h1 className="text-2xl font-bold text-gray-800">GoWizly Calendar</h1>
           </div>
           
           <div className="text-center">
@@ -198,7 +198,7 @@ const EmailVerificationPage: React.FC = () => {
             )}
             
             <p className="text-gray-600 mb-8">
-              Your email has been successfully verified. You can now access all features of your Family Calendar account.
+              Your email has been successfully verified. You can now access all features of your GoWizly Family Calendar account.
             </p>
             
             <button
@@ -219,7 +219,7 @@ const EmailVerificationPage: React.FC = () => {
       <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md">
         <div className="text-center mb-8">
           <Calendar className="w-12 h-12 text-purple-600 mx-auto mb-2" />
-          <h1 className="text-2xl font-bold text-gray-800">Family Calendar</h1>
+          <h1 className="text-2xl font-bold text-gray-800">GoWizly Family Calendar</h1>
         </div>
         
         <div className="text-center">

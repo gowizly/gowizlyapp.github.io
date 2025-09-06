@@ -96,7 +96,7 @@ export const getVerificationEmailTemplate = (username, verifyLink) => {
             <div class="footer">
                 <p>If you didn't create an account with GoWizly, you can safely ignore this email.</p>
                 <p>Need help? Contact our support team at support@gowizly.com</p>
-                <p>&copy; 2024 GoWizly. All rights reserved.</p>
+                <p>&copy; 2025 GoWizly. All rights reserved.</p>
             </div>
         </div>
     </body>
@@ -309,7 +309,7 @@ export const getWelcomeEmailTemplate = (username) => {
             <div class="footer">
                 <p>Need help getting started? Check out our <a href="${process.env.CLIENT_URL}/help">help center</a> or contact support.</p>
                 <p>Happy to have you on board!</p>
-                <p>&copy; 2024 GoWizly. All rights reserved.</p>
+                <p>&copy; 2025 GoWizly. All rights reserved.</p>
             </div>
         </div>
     </body>

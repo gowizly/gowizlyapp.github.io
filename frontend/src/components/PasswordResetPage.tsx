@@ -292,7 +292,7 @@ const PasswordResetPage: React.FC<PasswordResetPageProps> = ({ onBackToLogin }) 
       <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md">
         <div className="text-center mb-8">
           <Calendar className="w-12 h-12 text-purple-600 mx-auto mb-2" />
-          <h1 className="text-2xl font-bold text-gray-800">Family Calendar</h1>
+          <h1 className="text-2xl font-bold text-gray-800">GoWizly Calendar</h1>
         </div>
 
         {step === 'request' && renderRequestStep()}
