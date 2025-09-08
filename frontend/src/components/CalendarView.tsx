@@ -81,8 +81,25 @@ const CalendarView: React.FC<CalendarViewProps> = ({
     const dateStr = date.toISOString().split('T')[0];
     return events.filter(event => {
       const eventDate = new Date(event.startDate).toISOString().split('T')[0];
-      return eventDate === dateStr && 
-             (selectedChild ? event.childId === selectedChild.id : true);
+      const dateMatches = eventDate === dateStr;
+      
+      if (!dateMatches) return false;
+      
+      // If no child is selected, show all events
+      if (!selectedChild) return true;
+      
+      // Show events for the selected child - check if event has this child in the children array
+      if (selectedChild.id && event.children && event.children.some(child => child.id === selectedChild.id)) {
+        return true;
+      }
+      
+      // Legacy support: Show events with matching childId (for older events)
+      if (selectedChild.id && event.childId === selectedChild.id) return true;
+      
+      // Show "My Events" (0) when viewing all children or any specific child
+      if (event.childId === 0) return true;
+      
+      return false;
     });
   };
 
@@ -90,6 +107,24 @@ const CalendarView: React.FC<CalendarViewProps> = ({
     const newDate = new Date(selectedDate);
     newDate.setMonth(selectedDate.getMonth() + direction);
     onDateChange(newDate);
+  };
+
+  const getChildDisplayName = (event: Event): string => {
+    // If event has children array (new format), show child names
+    if (event.children && event.children.length > 0) {
+      if (event.children.length === 1) {
+        return event.children[0].name;
+      } else {
+        return `${event.children.length} children`;
+      }
+    }
+    
+    // Legacy support for old childId format
+    if (event.childId === -1) return 'All Children';
+    if (event.childId === 0) return 'My Events';
+    
+    const child = children.find(c => c.id === event.childId);
+    return child?.name || 'Unknown Child';
   };
 
   const days = getDaysInMonth(selectedDate);
@@ -123,11 +158,16 @@ const CalendarView: React.FC<CalendarViewProps> = ({
         {/* Controls */}
         <div className="flex items-center space-x-4">
           <select
-            value={selectedChild?.id || ''}
+            value={selectedChild?.id?.toString() || ''}
             onChange={(e) => {
-              const childId = parseInt(e.target.value);
-              const child = children.find(c => c.id === childId);
-              onChildChange(child || null);
+              const value = e.target.value;
+              if (value === '') {
+                onChildChange(null);
+              } else {
+                const childId = parseInt(value);
+                const child = children.find(c => c.id === childId);
+                onChildChange(child || null);
+              }
             }}
             className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
           >
@@ -184,7 +224,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({
                     className={`text-xs text-white px-2 py-1 rounded cursor-pointer ${
                       eventTypes[event.type as keyof typeof eventTypes]?.color || 'bg-gray-500'
                     }`}
-                    title={`${event.title} - ${eventPriorities[event.priority]?.label || 'Medium'} Priority\nClick to edit`}
+                    title={`${event.title}\n${event.description || 'No description'}\n🕒 ${new Date(event.startDate).toLocaleDateString()} ${event.isAllDay ? '(All Day)' : new Date(event.startDate).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}\n📊 ${eventPriorities[event.priority]?.label || 'Medium'} Priority\n👤 ${getChildDisplayName(event)}\nClick to edit`}
                     onClick={(e) => {
                       e.stopPropagation();
                       if (onEventClick) {

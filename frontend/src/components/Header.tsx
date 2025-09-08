@@ -1,10 +1,37 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Calendar, LogOut } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { API_BASE_URL } from '../config/environment';
+import Cookies from 'js-cookie';
+import axios from 'axios';
 
 const Header: React.FC = () => {
-  const { user, logout } = useAuth();
-
+  const { logout } = useAuth();
+  const [user, setUser] = useState<any>(null);
+  
+  const fetchUser = async () => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/api/auth/me`, {
+        headers: {
+          Authorization: `Bearer ${Cookies.get('auth_token')}`
+        }
+      });
+      console.log("Full response:", response.data);
+      
+      // Access the nested user data correctly
+      if (response.data.success && response.data.data && response.data.data.user) {
+        setUser(response.data.data.user);
+        console.log("User set to:", response.data.data.user);
+      }
+    } catch (error) {
+      console.error('Error fetching user:', error);
+    }
+  }
+  
+  useEffect(() => {
+    fetchUser();
+  }, []);
+  
   return (
     <div className="bg-purple-600 text-white p-4 flex justify-between items-center">
       <div className="flex items-center space-x-4">
@@ -12,7 +39,9 @@ const Header: React.FC = () => {
         <h1 className="text-xl font-bold">GoWizly Family Calendar</h1>
       </div>
       <div className="flex items-center space-x-4">
-        <span className="text-sm hidden sm:inline">Welcome, {user?.name}</span>
+        <span className="text-sm hidden sm:inline">
+          Welcome, {user?.username}
+        </span>
         <button
           onClick={logout}
           className="p-2 hover:bg-purple-700 rounded-lg transition-colors flex items-center space-x-2"

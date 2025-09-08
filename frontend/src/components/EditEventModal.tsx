@@ -60,6 +60,8 @@ interface EventFormData {
   description: string;
   startDate: string;
   endDate: string;
+  startTime: string;
+  endTime: string;
   isAllDay: boolean;
   type: EventType;
   priority: EventPriority;
@@ -83,6 +85,8 @@ const EditEventModal: React.FC<EditEventModalProps> = ({
     description: '',
     startDate: '',
     endDate: '',
+    startTime: '',
+    endTime: '',
     isAllDay: false,
     type: 'OTHER' as EventType,
     priority: 'MEDIUM' as EventPriority,
@@ -102,26 +106,43 @@ const EditEventModal: React.FC<EditEventModalProps> = ({
     return date.toISOString().split('T')[0];
   }, []);
 
+  // Extract time from datetime string (HH:MM format)
+  const extractTimeFromDateTime = useCallback((dateTimeString: string) => {
+    if (!dateTimeString) return '';
+    const date = new Date(dateTimeString);
+    if (isNaN(date.getTime())) return '';
+    return date.toTimeString().slice(0, 5); // Returns HH:MM format
+  }, []);
+
   // Initialize form data when event changes
   useEffect(() => {
     if (event && isOpen) {
+      // Use startDateOnly/endDateOnly if available, otherwise extract from full datetime
+      const startDateForInput = event.startDateOnly || formatDateForInput(event.startDate);
+      const endDateForInput = event.endDateOnly || formatDateForInput(event.endDate);
+      
+      // Determine childId - if event has children array and childId is null, it's for all children
+      const eventChildId = event.childId || null;
+      
       setEventData({
         title: event.title || '',
         description: event.description || '',
-        startDate: formatDateForInput(event.startDate),
-        endDate: formatDateForInput(event.endDate),
+        startDate: startDateForInput,
+        endDate: endDateForInput,
+        startTime: event.startTime || extractTimeFromDateTime(event.startDate) || '09:00',
+        endTime: event.endTime || extractTimeFromDateTime(event.endDate) || '10:00',
         isAllDay: event.isAllDay || false,
         type: event.type,
         priority: event.priority,
         color: event.color || EVENT_TYPE_COLORS[event.type],
-        childId: event.childId,
+        childId: eventChildId,
         hasReminder: event.hasReminder || false,
         reminderMinutes: event.reminderMinutes || 10
       });
       setValidationErrors([]);
       setShowDeleteConfirm(false);
     }
-  }, [event, isOpen, formatDateForInput]);
+  }, [event, isOpen, formatDateForInput, extractTimeFromDateTime]);
 
   // Handle form submission for updating events
   const handleUpdateEventSubmit = useCallback(async (e: React.FormEvent) => {
@@ -133,8 +154,10 @@ const EditEventModal: React.FC<EditEventModalProps> = ({
     // Validate event data
     const validation = validateEventForCreation({
       ...eventData,
+      startTime: eventData.startTime || '',
+      endTime: eventData.endTime || '',
       endDate: eventData.endDate || eventData.startDate,
-      childId: eventData.childId!
+      childId: eventData.childId
     });
     
     if (!validation.isValid) {
@@ -147,12 +170,25 @@ const EditEventModal: React.FC<EditEventModalProps> = ({
       return;
     }
 
-    console.log('✏️ Updating event with data:', eventData);
-    const response = await eventApiService.updateEvent(event.id!, {
-      ...eventData,
+    // Prepare the update payload
+    const updatePayload = {
+      title: eventData.title,
+      description: eventData.description,
+      startDate: eventData.startDate,
       endDate: eventData.endDate || eventData.startDate,
-      childId: eventData.childId!
-    });
+      startTime: eventData.isAllDay ? '' : eventData.startTime,
+      endTime: eventData.isAllDay ? '' : eventData.endTime,
+      isAllDay: eventData.isAllDay,
+      type: eventData.type,
+      priority: eventData.priority,
+      color: eventData.color,
+      childId: eventData.childId, // null for all children, specific ID for individual child
+      hasReminder: eventData.hasReminder,
+      reminderMinutes: eventData.hasReminder ? eventData.reminderMinutes : undefined
+    };
+
+    console.log('✏️ Updating event with data:', updatePayload);
+    const response = await eventApiService.updateEvent(event.id!, updatePayload);
 
     if (response.success) {
       console.log('✅ Event updated successfully:', response.data);
@@ -164,7 +200,7 @@ const EditEventModal: React.FC<EditEventModalProps> = ({
       const errorMessage = response.error || 'Unknown error';
       showError('Failed to Update Event', errorMessage);
     }
-  }, [eventData, event.id, onEventUpdated, onClose]);
+  }, [eventData, event.id, onEventUpdated, onClose, showError, showSuccess]);
 
   // Handle event deletion
   const handleDeleteEvent = useCallback(async () => {
@@ -183,10 +219,10 @@ const EditEventModal: React.FC<EditEventModalProps> = ({
       const errorMessage = response.error || 'Unknown error';
       showError('Failed to Delete Event', errorMessage);
     }
-  }, [event.id, onEventDeleted, onClose]);
+  }, [event.id, onEventDeleted, onClose, showError, showSuccess]);
 
   if (!isOpen || !event) return null;
-
+  
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -314,18 +350,30 @@ const EditEventModal: React.FC<EditEventModalProps> = ({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Child *</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Assign To *</label>
               <select
-                value={eventData.childId || ''}
-                onChange={(e) => setEventData({...eventData, childId: parseInt(e.target.value) || null})}
+                value={eventData.childId?.toString() || 'all'}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setEventData({
+                    ...eventData, 
+                    childId: value === 'all' ? null : parseInt(value)
+                  });
+                }}
                 className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                 required
               >
-                <option value="">Select a child</option>
-                {children.map(child => (
-                  <option key={child.id} value={child.id?.toString() || ''}>{child.name}</option>
+                <option value="all">All Children</option>
+                {children.filter(child => child.id !== null).map(child => (
+                  <option key={child.id} value={child.id!.toString()}>{child.name}</option>
                 ))}
               </select>
+              <div className="text-xs text-gray-500 mt-1">
+                {event.children && event.children.length > 0 
+                  ? `Currently assigned to: ${event.children.map(c => c.name).join(', ')}`
+                  : `Currently assigned to: ${children.find(child => child.id === event.childId)?.name || 'Unknown'}`
+                }
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -351,6 +399,33 @@ const EditEventModal: React.FC<EditEventModalProps> = ({
               </div>
             </div>
 
+            {/* Time Fields - Only show when not all day */}
+            {!eventData.isAllDay && (
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Start Time</label>
+                  <input
+                    type="time"
+                    value={eventData.startTime}
+                    onChange={(e) => setEventData({...eventData, startTime: e.target.value})}
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">End Time</label>
+                  <input
+                    type="time"
+                    value={eventData.endTime}
+                    onChange={(e) => setEventData({...eventData, endTime: e.target.value})}
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    required
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* All Day Checkbox */}
             <div className="flex items-center space-x-4">
               <label className="flex items-center space-x-2">
                 <input
@@ -361,30 +436,6 @@ const EditEventModal: React.FC<EditEventModalProps> = ({
                 />
                 <span className="text-sm text-gray-700">All Day Event</span>
               </label>
-
-              <label className="flex items-center space-x-2">
-                <input
-                  type="checkbox"
-                  checked={eventData.hasReminder}
-                  onChange={(e) => setEventData({...eventData, hasReminder: e.target.checked})}
-                  className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
-                />
-                <span className="text-sm text-gray-700">Set Reminder</span>
-              </label>
-
-              {eventData.hasReminder && (
-                <div className="flex items-center space-x-2">
-                  <input
-                    type="number"
-                    value={eventData.reminderMinutes}
-                    onChange={(e) => setEventData({...eventData, reminderMinutes: parseInt(e.target.value) || 10})}
-                    className="w-20 p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    min="1"
-                    max="1440"
-                  />
-                  <span className="text-sm text-gray-700">minutes before</span>
-                </div>
-              )}
             </div>
 
             <div className="flex justify-end space-x-4 pt-4">

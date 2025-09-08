@@ -12,11 +12,12 @@ import CalendarView from './CalendarView';
 import ChildManagement from './ChildManagement';
 import AddEventModal from './AddEventModal';
 import EditEventModal from './EditEventModal';
+import { useToast } from '../contexts/ToastContext';
 
 // Update the local Child interface to match the API
 interface LocalChild {
-      id: number | null;
-      name: string;
+  id: number | null;
+  name: string;
   gradeLevel: string;
   schoolName: string;
   birthDate?: string;
@@ -24,6 +25,7 @@ interface LocalChild {
 
 const FamilyCalendarApp = () => {
   const { isAuthenticated } = useAuth();
+  const { showError } = useToast();
   const [currentView, setCurrentView] = useState('calendar');
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [selectedChild, setSelectedChild] = useState<LocalChild | null>(null);
@@ -52,6 +54,12 @@ const FamilyCalendarApp = () => {
     } catch (error) {
       console.error('Error loading events:', error);
     }
+  }, []);
+
+  // Handle child creation completion - refresh children data
+  const handleChildCreated = useCallback(async () => {
+    console.log('👶 Refreshing children list after child creation...');
+    await loadChildren();
   }, []);
 
   // Handle event click for editing
@@ -98,19 +106,11 @@ const FamilyCalendarApp = () => {
         setChildren(localChildren);
       } else {
         console.error('❌ Failed to load children:', response.error);
-        // Fallback to demo data for development
-        setChildren([
-          { id: 1, name: 'Emma', gradeLevel: '5th Grade', schoolName: 'Lincoln Elementary', birthDate: '2014-08-15' },
-          { id: 2, name: 'Jake', gradeLevel: '8th Grade', schoolName: 'Roosevelt Middle School', birthDate: '2011-03-22' }
-        ]);
+        setChildren([]);
       }
     } catch (error) {
       console.error('Error loading children:', error);
-      // Fallback to demo data for development
-      setChildren([
-        { id: 1, name: 'Emma', gradeLevel: '5th Grade', schoolName: 'Lincoln Elementary', birthDate: '2014-08-15' },
-        { id: 2, name: 'Jake', gradeLevel: '8th Grade', schoolName: 'Roosevelt Middle School', birthDate: '2011-03-22' }
-      ]);
+      setChildren([]);
     }
   };
 
@@ -324,9 +324,10 @@ const FamilyCalendarApp = () => {
                   
                   if (response.success) {
                     console.log('✅ Child created successfully:', response.data);
-                setShowAddChild(false);
+                    setShowAddChild(false);
                     setNewChild({ name: '', gradeLevel: '', schoolName: '', birthDate: '' });
-                    loadChildren(); // Reload children from API
+                    // Reload children from API to ensure fresh data
+                    await handleChildCreated();
                   } else {
                     console.error('❌ Failed to create child:', response.error);
                     alert('Failed to add child: ' + (response.error || 'Unknown error'));
@@ -364,13 +365,21 @@ const FamilyCalendarApp = () => {
           onChildChange={setSelectedChild}
           children={children}
           events={events}
-          onAddEvent={() => setShowAddEvent(true)}
+          onAddEvent={() => {
+            if (children.length === 0) {
+              console.log('No children available');
+              showError('No children available - Add Child first');
+            } else {
+              setShowAddEvent(true);
+            }
+          }}
           onEventClick={handleEventClick}
         />
       )}
       {currentView === 'children' && (
         <ChildManagement 
           onBack={() => setCurrentView('calendar')}
+          onChildCreated={handleChildCreated}
         />
       )}
       

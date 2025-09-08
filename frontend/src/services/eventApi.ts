@@ -12,22 +12,27 @@ export interface Event {
   description?: string;
   startDate: string;
   endDate: string;
+  startTime: string;
+  endTime: string;
   isAllDay: boolean;
   type: EventType;
   priority: EventPriority;
   color?: string;
-  childId: number;
+  childId: number | null;
   hasReminder: boolean;
   reminderMinutes?: number;
-  child?: {
+  children?: Array<{
     id: number;
     name: string;
-  };
+  }>;
   isRecurring?: boolean;
   recurrenceRule?: string;
   parentId?: number;
   createdAt?: string;
   updatedAt?: string;
+  // Additional fields from API response
+  startDateOnly?: string;
+  endDateOnly?: string;
 }
 
 export type EventType = 'SCHOOL_EVENT' | 'ASSIGNMENT_DUE' | 'EXAM' | 'PARENT_MEETING' | 'EXTRACURRICULAR' | 'APPOINTMENT' | 'BIRTHDAY' | 'HOLIDAY' | 'REMINDER' | 'OTHER';
@@ -52,7 +57,8 @@ export interface EventsResponse {
 
 export interface CreateEventResponse {
   event: Event;
-  conflicts: any[];
+  conflicts?: any[];
+  childrenCount?: number;
 }
 
 class EventApiService {
@@ -126,7 +132,6 @@ class EventApiService {
     try {
       console.log('🆕 Creating event:', eventData);
       console.log('📤 Event request payload:', JSON.stringify(eventData, null, 2));
-      console.log('📤 Event request headers:', this.getAuthHeaders());
       
       const response = await fetch(`${API_BASE_URL}${EVENT_ENDPOINT}`, {
         method: 'POST',
@@ -137,18 +142,11 @@ class EventApiService {
       const result = await this.handleResponse<any>(response);
       
       if (result.success && result.data) {
-        // API returns { success: true, msg: "...", data: { event: {...}, conflicts: [...] } }
-        if (result.data.data && result.data.data.event) {
-          console.log('✅ Extracting event from create response');
-          return {
-            success: true,
-            data: result.data.data
-          };
-        }
-        // Fallback
+        // API returns { success: true, msg: "...", data: { event: {...}, childrenCount: ... } }
+        console.log('✅ Event created successfully, extracting data');
         return {
           success: true,
-          data: result.data
+          data: result.data.data // Extract the nested data object
         };
       }
       
@@ -178,19 +176,37 @@ class EventApiService {
       const result = await this.handleResponse<any>(response);
       
       if (result.success && result.data) {
-        // API returns { success: true, data: { events: [...], pagination: {...} } }
+        // Handle different API response structures
         if (result.data.data && result.data.data.events) {
-          console.log('✅ Extracting events array from API response');
+          console.log('✅ Extracting events array from nested API response');
           return {
             success: true,
             data: result.data.data
           };
         }
-        // Fallback
-        return {
-          success: true,
-          data: Array.isArray(result.data) ? { events: result.data, pagination: { total: result.data.length, limit, offset, hasMore: false } } : result.data
-        };
+        // If API returns events directly in data
+        else if (Array.isArray(result.data)) {
+          console.log('✅ Processing events array from direct API response');
+          return {
+            success: true,
+            data: { 
+              events: result.data, 
+              pagination: { 
+                total: result.data.length, 
+                limit, 
+                offset, 
+                hasMore: false 
+              } 
+            }
+          };
+        }
+        // Fallback for other structures
+        else {
+          return {
+            success: true,
+            data: result.data
+          };
+        }
       }
       
       return result;
@@ -218,17 +234,10 @@ class EventApiService {
       
       if (result.success && result.data) {
         // API returns { success: true, msg: "...", data: { event: {...} } }
-        if (result.data.data && result.data.data.event) {
-          console.log('✅ Extracting event from update response');
-          return {
-            success: true,
-            data: result.data.data.event
-          };
-        }
-        // Fallback
+        console.log('✅ Event updated successfully, extracting event data');
         return {
           success: true,
-          data: result.data
+          data: result.data.data.event // Extract the nested event object
         };
       }
       
@@ -280,7 +289,10 @@ class EventApiService {
       const response = await this.getEvents();
       
       if (response.success && response.data) {
-        const filteredEvents = response.data.events.filter(event => event.childId === childId);
+        const filteredEvents = response.data.events.filter(event => 
+          event.childId === childId || 
+          (event.childId === null && event.children && event.children.some(child => child.id === childId))
+        );
         console.log(`✅ Filtered ${filteredEvents.length} events for child ${childId}`);
         return {
           success: true,
@@ -310,7 +322,7 @@ class EventApiService {
       
       if (response.success && response.data) {
         const filteredEvents = response.data.events.filter(event => {
-          const eventStart = new Date(event.startDate);
+          const eventStart = new Date(event.startDateOnly || event.startDate);
           const rangeStart = new Date(startDate);
           const rangeEnd = new Date(endDate);
           return eventStart >= rangeStart && eventStart <= rangeEnd;

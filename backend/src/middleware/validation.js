@@ -118,18 +118,35 @@ export const validateChild = [
     .withMessage("School name must be between 2 and 100 characters"),
   
   body("birthDate")
-    .optional()
+    .notEmpty()
+    .withMessage("Birth date is required")
     .isISO8601()
     .withMessage("Birth date must be a valid date")
     .custom((value) => {
-      if (value) {
-        const birthDate = new Date(value);
-        const today = new Date();
-        const age = today.getFullYear() - birthDate.getFullYear();
-        if (age < 3 || age > 19) {
-          throw new Error("Child must be between 3 and 19 years old");
-        }
+      const birthDate = new Date(value);
+      
+      if (isNaN(birthDate.getTime())) {
+        throw new Error("Birth date must be a valid date");
       }
+      
+      const today = new Date();
+      const age = today.getFullYear() - birthDate.getFullYear();
+      const monthDiff = today.getMonth() - birthDate.getMonth();
+      const dayDiff = today.getDate() - birthDate.getDate();
+      
+      // Adjust age if birthday hasn't occurred this year
+      const actualAge = (monthDiff < 0 || (monthDiff === 0 && dayDiff < 0)) ? age - 1 : age;
+      
+      // Validate age range: 0-21 years
+      if (actualAge < 0 || actualAge > 21) {
+        throw new Error("Child must be between 0 and 21 years old");
+      }
+      
+      // Additional check: birth date cannot be in the future
+      if (birthDate > today) {
+        throw new Error("Birth date cannot be in the future");
+      }
+      
       return true;
     }),
   
@@ -169,15 +186,34 @@ export const validateChildUpdate = [
     .custom((value) => {
       if (value) {
         const birthDate = new Date(value);
+        
+        if (isNaN(birthDate.getTime())) {
+          throw new Error("Birth date must be a valid date");
+        }
+        
         const today = new Date();
         const age = today.getFullYear() - birthDate.getFullYear();
-        if (age < 3 || age > 19) {
-          throw new Error("Child must be between 3 and 19 years old");
+        const monthDiff = today.getMonth() - birthDate.getMonth();
+        const dayDiff = today.getDate() - birthDate.getDate();
+        
+        // Adjust age if birthday hasn't occurred this year
+        const actualAge = (monthDiff < 0 || (monthDiff === 0 && dayDiff < 0)) ? age - 1 : age;
+        
+        // Validate age range: 0-21 years
+        if (actualAge < 0 || actualAge > 21) {
+          throw new Error("Child must be between 0 and 21 years old");
         }
       }
       return true;
     }),
-
+  
+  // COMMENTED OUT - Google Classroom Integration
+  // body("googleClassroomEmail")
+  //   .optional()
+  //   .isEmail()
+  //   .normalizeEmail()
+  //   .withMessage("Google Classroom email must be a valid email address"),
+  
   validateRequest
 ];
 
@@ -211,17 +247,17 @@ export const validateEvent = [
   body("endDate")
     .optional()
     .isISO8601()
-    .withMessage("End date must be a valid date")
-    .custom((value, { req }) => {
-      if (value && req.body.startDate) {
-        const startDate = new Date(req.body.startDate);
-        const endDate = new Date(value);
-        if (endDate <= startDate) {
-          throw new Error("End date must be after start date");
-        }
-      }
-      return true;
-    }),
+    .withMessage("End date must be a valid date"),
+    // .custom((value, { req }) => {
+    //   if (value && req.body.startDate) {
+    //     const startDate = new Date(req.body.startDate);
+    //     const endDate = new Date(value);
+    //     if (endDate <= startDate) {
+    //       throw new Error("End date must be after start date");
+    //     }
+    //   }
+    //   return true;
+    // }),
   
   body("isAllDay")
     .optional()
@@ -248,9 +284,9 @@ export const validateEvent = [
     .withMessage("Color must be a valid hex color code"),
   
   body("childId")
-    .optional()
-    .isInt({ min: 1 })
-    .withMessage("Child ID must be a positive integer"),
+    .optional(),
+    // .isInt({ min: 1 })
+    // .withMessage("Child ID must be a positive integer"),
   
   body("reminderMinutes")
     .optional()
@@ -282,17 +318,17 @@ export const validateEventUpdate = [
   body("endDate")
     .optional()
     .isISO8601()
-    .withMessage("End date must be a valid date")
-    .custom((value, { req }) => {
-      if (value && req.body.startDate) {
-        const startDate = new Date(req.body.startDate);
-        const endDate = new Date(value);
-        if (endDate <= startDate) {
-          throw new Error("End date must be after start date");
-        }
-      }
-      return true;
-    }),
+    .withMessage("End date must be a valid date"),
+    // .custom((value, { req }) => {
+    //   if (value && req.body.startDate) {
+    //     const startDate = new Date(req.body.startDate);
+    //     const endDate = new Date(value);
+    //     if (endDate <= startDate) {
+    //       throw new Error("End date must be after start date");
+    //     }
+    //   }
+    //   return true;
+    // }),
   
   body("isAllDay")
     .optional()
@@ -319,9 +355,9 @@ export const validateEventUpdate = [
     .withMessage("Color must be a valid hex color code"),
   
   body("childId")
-    .optional()
-    .isInt({ min: 1 })
-    .withMessage("Child ID must be a positive integer"),
+    .optional(),
+    // .isInt({ min: 1 })
+    // .withMessage("Child ID must be a positive integer"),
   
   body("reminderMinutes")
     .optional()

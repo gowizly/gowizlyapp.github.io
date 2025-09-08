@@ -33,19 +33,24 @@ class CalendarService {
 
     // Add child filter if specified
     if (childId) {
-      whereClause.OR = whereClause.OR.map(condition => ({
-        ...condition,
-        childId: parseInt(childId)
-      }));
+      whereClause.eventChildren = {
+        some: {
+          childId: parseInt(childId)
+        }
+      };
     }
 
     const events = await prisma.event.findMany({
       where: whereClause,
       include: {
-        child: {
-          select: {
-            id: true,
-            name: true
+        eventChildren: {
+          include: {
+            child: {
+              select: {
+                id: true,
+                name: true
+              }
+            }
           }
         }
       },
@@ -84,16 +89,24 @@ class CalendarService {
     };
 
     if (childId) {
-      whereClause.childId = parseInt(childId);
+      whereClause.eventChildren = {
+        some: {
+          childId: parseInt(childId)
+        }
+      };
     }
 
     return await prisma.event.findMany({
       where: whereClause,
       include: {
-        child: {
-          select: {
-            id: true,
-            name: true
+        eventChildren: {
+          include: {
+            child: {
+              select: {
+                id: true,
+                name: true
+              }
+            }
           }
         }
       },
@@ -119,16 +132,24 @@ class CalendarService {
     };
 
     if (childId) {
-      whereClause.childId = parseInt(childId);
+      whereClause.eventChildren = {
+        some: {
+          childId: parseInt(childId)
+        }
+      };
     }
 
     return await prisma.event.findMany({
       where: whereClause,
       include: {
-        child: {
-          select: {
-            id: true,
-            name: true
+        eventChildren: {
+          include: {
+            child: {
+              select: {
+                id: true,
+                name: true
+              }
+            }
           }
         }
       },
@@ -151,7 +172,11 @@ class CalendarService {
     };
 
     if (childId) {
-      whereClause.childId = parseInt(childId);
+      whereClause.eventChildren = {
+        some: {
+          childId: parseInt(childId)
+        }
+      };
     }
 
     // Get counts for different time periods
@@ -287,10 +312,16 @@ class CalendarService {
     };
   }
 
-  // Format event for calendar display
+  // Format event for calendar display - updated for new schema
   formatEventForCalendar(event) {
     const colors = this.getEventTypeColors();
     
+    // Extract children from eventChildren relationship
+    const children = event.eventChildren ? event.eventChildren.map(ec => ({
+      id: ec.child.id,
+      name: ec.child.name
+    })) : [];
+
     return {
       id: event.id,
       title: event.title,
@@ -301,12 +332,11 @@ class CalendarService {
       type: event.type,
       priority: event.priority,
       color: event.color || colors[event.type] || colors.OTHER,
-      child: event.child ? {
-        id: event.child.id,
-        name: event.child.name
-      } : null,
+      children: children, // Array of children instead of single child
       hasReminder: event.hasReminder,
-      reminderMinutes: event.reminderMinutes
+      reminderMinutes: event.reminderMinutes,
+      // Keep backward compatibility by providing first child as 'child' if exists
+      child: children.length > 0 ? children[0] : null
     };
   }
 
@@ -320,7 +350,7 @@ class CalendarService {
     return start1 < end2 && start2 < end1;
   }
 
-  // Get conflicting events for a new event
+  // Get conflicting events for a new event - updated for new schema
   async getConflictingEvents(userId, startDate, endDate, excludeEventId = null) {
     const whereClause = {
       parentId: userId,
@@ -346,6 +376,36 @@ class CalendarService {
     return await prisma.event.findMany({
       where: whereClause,
       include: {
+        eventChildren: {
+          include: {
+            child: {
+              select: {
+                id: true,
+                name: true
+              }
+            }
+          }
+        }
+      }
+    });
+  }
+
+  // Helper method to check if a child has access to an event
+  async hasChildAccess(eventId, childId) {
+    const eventChild = await prisma.eventChild.findFirst({
+      where: {
+        eventId: parseInt(eventId),
+        childId: parseInt(childId)
+      }
+    });
+    return !!eventChild;
+  }
+
+  // Helper method to get all children for an event
+  async getEventChildren(eventId) {
+    const eventChildren = await prisma.eventChild.findMany({
+      where: { eventId: parseInt(eventId) },
+      include: {
         child: {
           select: {
             id: true,
@@ -353,6 +413,81 @@ class CalendarService {
           }
         }
       }
+    });
+    return eventChildren.map(ec => ec.child);
+  }
+
+  // Helper method to add a child to an event
+  async addChildToEvent(eventId, childId) {
+    return await prisma.eventChild.create({
+      data: {
+        eventId: parseInt(eventId),
+        childId: parseInt(childId)
+      }
+    });
+  }
+
+  // Helper method to remove a child from an event
+  async removeChildFromEvent(eventId, childId) {
+    return await prisma.eventChild.deleteMany({
+      where: {
+        eventId: parseInt(eventId),
+        childId: parseInt(childId)
+      }
+    });
+  }
+
+  // Helper method to get events for multiple children
+  async getEventsForChildren(userId, childIds, startDate = null, endDate = null) {
+    const whereClause = {
+      parentId: userId,
+      eventChildren: {
+        some: {
+          childId: { in: childIds.map(id => parseInt(id)) }
+        }
+      }
+    };
+
+    if (startDate && endDate) {
+      whereClause.OR = [
+        {
+          startDate: {
+            gte: new Date(startDate),
+            lte: new Date(endDate)
+          }
+        },
+        {
+          AND: [
+            { startDate: { lte: new Date(endDate) } },
+            { 
+              OR: [
+                { endDate: { gte: new Date(startDate) } },
+                { endDate: null }
+              ]
+            }
+          ]
+        }
+      ];
+    }
+
+    return await prisma.event.findMany({
+      where: whereClause,
+      include: {
+        eventChildren: {
+          include: {
+            child: {
+              select: {
+                id: true,
+                name: true
+              }
+            }
+          }
+        }
+      },
+      orderBy: [
+        { startDate: 'asc' },
+        { title: 'asc' }
+      ]
     });
   }
 }

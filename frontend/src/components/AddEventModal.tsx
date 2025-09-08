@@ -58,6 +58,8 @@ interface EventFormData {
   description: string;
   startDate: string;
   endDate: string;
+  startTime: string;
+  endTime: string;
   isAllDay: boolean;
   type: EventType;
   priority: EventPriority;
@@ -79,6 +81,8 @@ const AddEventModal: React.FC<AddEventModalProps> = ({
     description: '',
     startDate: '',
     endDate: '',
+    startTime: '09:00',
+    endTime: '10:00',
     isAllDay: false,
     type: 'OTHER' as EventType,
     priority: 'MEDIUM' as EventPriority,
@@ -89,11 +93,15 @@ const AddEventModal: React.FC<AddEventModalProps> = ({
   });
   
   const [validationErrors, setValidationErrors] = React.useState<ValidationError[]>([]);
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
 
   // Handle form submission for creating events
   const handleCreateEventSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
     
+    if (isSubmitting) return; // Prevent double submission
+    
+    setIsSubmitting(true);
     // Clear previous validation errors
     setValidationErrors([]);
     
@@ -101,7 +109,7 @@ const AddEventModal: React.FC<AddEventModalProps> = ({
     const validation = validateEventForCreation({
       ...newEvent,
       endDate: newEvent.endDate || newEvent.startDate,
-      childId: newEvent.childId!
+      childId: newEvent.childId
     });
     
     if (!validation.isValid) {
@@ -111,18 +119,41 @@ const AddEventModal: React.FC<AddEventModalProps> = ({
       // Show toast notification for validation errors
       const errorMessages = validation.errors.map(err => err.message).join(', ');
       showError('Validation Error', errorMessages);
+      setIsSubmitting(false);
       return;
     }
 
-    console.log('🆕 Creating new event with data:', newEvent);
-    const response = await eventApiService.createEvent({
-      ...newEvent,
-      endDate: newEvent.endDate || newEvent.startDate, // Use start date as end date if not specified
-      childId: newEvent.childId! // We already validated that childId is not null above
-    });
+    // Create the event data with proper date/time formatting
+    const finalEndDate = newEvent.endDate || newEvent.startDate;
+    
+    // Prepare the payload for the API
+    const eventData = {
+      title: newEvent.title,
+      description: newEvent.description,
+      startDate: newEvent.startDate, // Send date only
+      endDate: finalEndDate, // Send date only
+      startTime: newEvent.isAllDay ? '' : newEvent.startTime, // Send time separately
+      endTime: newEvent.isAllDay ? '' : newEvent.endTime, // Send time separately
+      isAllDay: newEvent.isAllDay,
+      type: newEvent.type,
+      priority: newEvent.priority,
+      color: newEvent.color,
+      childId: newEvent.childId, // null for all children, specific ID for individual child
+      hasReminder: newEvent.hasReminder,
+      reminderMinutes: newEvent.hasReminder ? newEvent.reminderMinutes : undefined
+    };
+
+    console.log('🆕 Creating new event with data:', eventData);
+    const response = await eventApiService.createEvent(eventData);
 
     if (response.success) {
       console.log('✅ Event created successfully:', response.data);
+      
+      // Show success message with children count if available
+      const childrenCount = response.data?.childrenCount;
+      const successMessage = childrenCount 
+        ? `Event created successfully for ${childrenCount} children!`
+        : 'Your event has been added to the calendar.';
       
       // Reset form
       setNewEvent({
@@ -130,6 +161,8 @@ const AddEventModal: React.FC<AddEventModalProps> = ({
         description: '',
         startDate: '',
         endDate: '',
+        startTime: '09:00',
+        endTime: '10:00',
         isAllDay: false,
         type: 'OTHER' as EventType,
         priority: 'MEDIUM' as EventPriority,
@@ -140,7 +173,7 @@ const AddEventModal: React.FC<AddEventModalProps> = ({
       });
       
       // Notify parent component
-      showSuccess('Event Created!', 'Your event has been added to the calendar.');
+      showSuccess('Event Created!', successMessage);
       onEventCreated();
       onClose();
     } else {
@@ -148,7 +181,9 @@ const AddEventModal: React.FC<AddEventModalProps> = ({
       const errorMessage = response.error || 'Unknown error';
       showError('Failed to Create Event', errorMessage);
     }
-  }, [newEvent, onEventCreated, onClose]);
+    
+    setIsSubmitting(false);
+  }, [newEvent, onEventCreated, onClose, isSubmitting, showError, showSuccess]);
 
   if (!isOpen) return null;
 
@@ -246,18 +281,30 @@ const AddEventModal: React.FC<AddEventModalProps> = ({
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Child *</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Assign To *</label>
               <select
-                value={newEvent.childId || ''}
-                onChange={(e) => setNewEvent({...newEvent, childId: parseInt(e.target.value) || null})}
+                value={newEvent.childId?.toString() || 'all'}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setNewEvent({
+                    ...newEvent, 
+                    childId: value === 'all' ? null : parseInt(value)
+                  });
+                }}
                 className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                 required
               >
-                <option value="">Select a child</option>
-                {children.map(child => (
-                  <option key={child.id} value={child.id?.toString() || ''}>{child.name}</option>
+                <option value="all">All Children</option>
+                {children.filter(child => child.id !== null).map(child => (
+                  <option key={child.id} value={child.id!.toString()}>{child.name}</option>
                 ))}
               </select>
+              <div className="text-xs text-gray-500 mt-1">
+                {newEvent.childId === null 
+                  ? `Event will be created for all ${children.filter(child => child.id !== null).length} children`
+                  : `Event will be created for ${children.find(child => child.id === newEvent.childId)?.name || 'selected child'} only`
+                }
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -266,7 +313,11 @@ const AddEventModal: React.FC<AddEventModalProps> = ({
                 <input
                   type="date"
                   value={newEvent.startDate}
-                  onChange={(e) => setNewEvent({...newEvent, startDate: e.target.value})}
+                  onChange={(e) => setNewEvent({
+                    ...newEvent, 
+                    startDate: e.target.value,
+                    endDate: newEvent.endDate || e.target.value // Auto-set end date if not already set
+                  })}
                   className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                   required
                 />
@@ -283,6 +334,33 @@ const AddEventModal: React.FC<AddEventModalProps> = ({
               </div>
             </div>
 
+            {/* Time Fields - Only show when not all day */}
+            {!newEvent.isAllDay && (
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Start Time</label>
+                  <input
+                    type="time"
+                    value={newEvent.startTime}
+                    onChange={(e) => setNewEvent({...newEvent, startTime: e.target.value})}
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">End Time</label>
+                  <input
+                    type="time"
+                    value={newEvent.endTime}
+                    onChange={(e) => setNewEvent({...newEvent, endTime: e.target.value})}
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    required
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* All Day Checkbox */}
             <div className="flex items-center space-x-4">
               <label className="flex items-center space-x-2">
                 <input
@@ -293,30 +371,6 @@ const AddEventModal: React.FC<AddEventModalProps> = ({
                 />
                 <span className="text-sm text-gray-700">All Day Event</span>
               </label>
-
-              <label className="flex items-center space-x-2">
-                <input
-                  type="checkbox"
-                  checked={newEvent.hasReminder}
-                  onChange={(e) => setNewEvent({...newEvent, hasReminder: e.target.checked})}
-                  className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
-                />
-                <span className="text-sm text-gray-700">Set Reminder</span>
-              </label>
-
-              {newEvent.hasReminder && (
-                <div className="flex items-center space-x-2">
-                  <input
-                    type="number"
-                    value={newEvent.reminderMinutes}
-                    onChange={(e) => setNewEvent({...newEvent, reminderMinutes: parseInt(e.target.value) || 10})}
-                    className="w-20 p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    min="1"
-                    max="1440"
-                  />
-                  <span className="text-sm text-gray-700">minutes before</span>
-                </div>
-              )}
             </div>
 
             <div className="flex justify-end space-x-4 pt-4">
@@ -329,9 +383,10 @@ const AddEventModal: React.FC<AddEventModalProps> = ({
               </button>
               <button
                 type="submit"
-                className="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center space-x-2"
+                disabled={isSubmitting}
+                className="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center space-x-2"
               >
-                <span>Add Event</span>
+                <span>{isSubmitting ? 'Creating...' : 'Add Event'}</span>
               </button>
             </div>
           </form>

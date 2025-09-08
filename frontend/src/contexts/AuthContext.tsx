@@ -1,5 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { API_BASE_URL as BASE_URL } from '../config/environment';
+import axios from 'axios';
+import Cookies from 'js-cookie';
 
 const API_BASE_URL = `${BASE_URL}/api/auth`;
 
@@ -34,22 +36,16 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 const setCookie = (name: string, value: string, days: number = 7) => {
   const expires = new Date();
   expires.setTime(expires.getTime() + days * 24 * 60 * 60 * 1000);
-  document.cookie = `${name}=${value};expires=${expires.toUTCString()};path=/;secure;samesite=strict`;
+  Cookies.set(name, value, { expires: expires, path: '/' });
 };
 
 const getCookie = (name: string): string | null => {
-  const nameEQ = name + "=";
-  const ca = document.cookie.split(';');
-  for (let i = 0; i < ca.length; i++) {
-    let c = ca[i];
-    while (c.charAt(0) === ' ') c = c.substring(1, c.length);
-    if (c.indexOf(nameEQ) === 0) return c.substring(nameEQ.length, c.length);
-  }
-  return null;
+  console.log("Getting cookie:", name);
+  return Cookies.get(name) || null;
 };
 
 const deleteCookie = (name: string) => {
-  document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/;`;
+  Cookies.remove(name, { path: '/' });
 };
 
 interface AuthProviderProps {
@@ -79,28 +75,28 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const fetchUserProfile = async (token: string): Promise<User | null> => {
     try {
       console.log('👤 Fetching user profile with token:', token.substring(0, 20) + '...');
-      
-      const response = await fetch(`${API_BASE_URL}/me`, {
+      console.log("API_BASE_URL is:",API_BASE_URL);
+      const response = await axios.get(`${API_BASE_URL}/me`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
         }
       });
-
+console.log("response of auth context is:",response);
       console.log('👤 User profile response status:', response.status);
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
+      if (!response.data) {
+        const errorData = await response.data.json().catch(() => ({}));
         console.error('❌ Failed to fetch user profile:', response.status, errorData);
         throw new Error(`Failed to fetch user profile: ${response.status}`);
       }
 
-      const data = await response.json();
+      const data = await response.data;
       console.log('👤 User profile data:', data);
-      
+      //📡 Raw response: {"success":true,"data":{"user":{"id":3,"username":"Vaibhaw Anand","email":"vaibhaw@coretechies.com","isVerified":true,"createdAt":"2025-08-29T09:58:08.265Z","updatedAt":"2025-08-29T09:58:08.265Z","chi
       return {
         id: (data.id || data.userId || 'temp_id').toString(),
-        name: data.username || data.name || data.email.split('@')[0],
+        name: data.username || data.name || data.email.split('@')[0] || data.user.username,
         email: data.email,
         username: data.username
       };
@@ -199,17 +195,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       
       console.log('🔐 Attempting login for:', email);
       
-      const response = await fetch(`${API_BASE_URL}/login`, {
+      const response = await axios(`${API_BASE_URL}/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ email, password }),
+        data: JSON.stringify({ email, password }),
       });
 
       console.log('📡 Login response status:', response.status);
       
-      const data = await response.json();
+      const data = await response.data;
       console.log('📡 Login response data:', data);
       console.log('📡 Login response data keys:', Object.keys(data));
       console.log('📡 Looking for token in:', { 
@@ -220,7 +216,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         authToken: data.authToken
       });
 
-      if (!response.ok) {
+      if (!response.data) {
         console.error('❌ Login failed:', data.message || 'Unknown error');
         return false;
       }
@@ -277,7 +273,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         console.log('🔧 Full response data for debugging:', JSON.stringify(data, null, 2));
         
         // Temporary fallback: if login is successful but no token, create a mock session
-        if (response.ok) {
+        if (response.data) {
           console.log('⚠️ Login successful but no token, creating temporary session...');
           const mockToken = 'temp_session_' + Date.now();
           const userData = {
@@ -318,17 +314,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         return { success: false, message: 'You must accept the terms and conditions' };
       }
       
-      const response = await fetch(`${API_BASE_URL}/register`, {
+      const response = await axios(`${API_BASE_URL}/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ username, email, password }),
+        data: JSON.stringify({ username, email, password }),
       });
 
-      const data = await response.json();
+      const data = await response.data;
 
-      if (!response.ok) {
+      if (!response.data) {
         return { success: false, message: data.message || 'Registration failed. Please try again.' };
       }
 
@@ -358,16 +354,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       setIsLoading(true);
       
-      const response = await fetch(`${API_BASE_URL}/verify/${verificationToken}`, {
+      const response = await axios(`${API_BASE_URL}/verify/${verificationToken}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
         },
       });
 
-      const data = await response.json();
+      const data = await response.data;
 
-      if (!response.ok) {
+      if (!response.data) {
         console.error('Email verification failed:', data.message || 'Unknown error');
         return false;
       }
@@ -386,17 +382,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       setIsLoading(true);
       
-      const response = await fetch(`${API_BASE_URL}/forgot-password`, {
+      const response = await axios(`${API_BASE_URL}/forgot-password`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ email }),
+        data: JSON.stringify({ email }),
       });
 
-      const data = await response.json();
+          const data = await response.data;
 
-      if (!response.ok) {
+      if (!response.data) {
         console.error('Password reset request failed:', data.message || 'Unknown error');
         return false;
       }
@@ -414,17 +410,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       setIsLoading(true);
       
-      const response = await fetch(`${API_BASE_URL}/reset-password/${resetToken}`, {
+      const response = await axios(`${API_BASE_URL}/reset-password/${resetToken}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ password: newPassword }),
+        data: JSON.stringify({ password: newPassword }),
       });
 
-      const data = await response.json();
+      const data = await response.data;
 
-      if (!response.ok) {
+            if (!response.data) {
         console.error('Password reset failed:', data.message || 'Unknown error');
         return false;
       }
