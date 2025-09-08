@@ -2,12 +2,26 @@ import React, { useState, useEffect } from 'react';
 import { Users, Plus, Edit, Trash2, Save, X, User, AlertCircle, CheckCircle, Loader, ArrowLeft } from 'lucide-react';
 import { Child, childApiService } from '../services/childApi';
 import { validateChildForCreation, validateChildForUpdate, ValidationError, VALID_GRADE_LEVELS } from '../utils/childValidation';
+import { Event, eventApiService } from '../services/eventApi';
 
+const eventTypes = {
+  ASSIGNMENT_DUE: { color: 'bg-purple-500', label: 'Assignment Due' },
+  EXTRACURRICULAR: { color: 'bg-red-500', label: 'Extracurricular Event' },
+  SCHOOL_EVENT: { color: 'bg-blue-500', label: 'School Event' },
+  PARENT_MEETING: { color: 'bg-green-500', label: 'Parent Meeting' },
+  HOLIDAY: { color: 'bg-yellow-500', label: 'Holiday' },
+  BIRTHDAY: { color: 'bg-pink-500', label: 'Birthday' },
+  APPOINTMENT: { color: 'bg-indigo-500', label: 'Appointment' },
+  REMINDER: { color: 'bg-cyan-500', label: 'Reminder' },
+  EXAM: { color: 'bg-orange-500', label: 'Exam' },
+  OTHER: { color: 'bg-gray-500', label: 'Other' }
+};
 interface ChildManagementProps {
   onBack?: () => void;
+  onChildCreated?: () => void;
 }
 
-const ChildManagement: React.FC<ChildManagementProps> = ({ onBack }) => {
+const ChildManagement: React.FC<ChildManagementProps> = ({ onBack, onChildCreated }) => {
   const [children, setChildren] = useState<Child[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -23,17 +37,19 @@ const ChildManagement: React.FC<ChildManagementProps> = ({ onBack }) => {
   const [formLoading, setFormLoading] = useState(false);
   const [validationErrors, setValidationErrors] = useState<ValidationError[]>([]);
 
+  const [upcomingEvents, setUpcomingEvents] = useState<Event[]>([]);
   useEffect(() => {
     loadChildren();
+    getUpcomingEvents();
   }, []);
 
   const loadChildren = async () => {
     setLoading(true);
     setError(null);
-    
+
     console.log('📋 Loading children from API...');
     const response = await childApiService.getChildren();
-    
+
     if (response.success && response.data) {
       console.log('✅ Children loaded successfully:', response.data);
       // Ensure we have an array, not HTML or other data
@@ -49,7 +65,7 @@ const ChildManagement: React.FC<ChildManagementProps> = ({ onBack }) => {
       setError(response.error || 'Failed to load children');
       setChildren([]); // Reset to empty array
     }
-    
+
     setLoading(false);
   };
 
@@ -57,10 +73,10 @@ const ChildManagement: React.FC<ChildManagementProps> = ({ onBack }) => {
     // Clear previous validation errors
     setValidationErrors([]);
     setError(null);
-    
+
     // Validate child data
     const validation = validateChildForCreation(formData);
-    
+
     if (!validation.isValid) {
       console.warn('⚠️ Create child validation failed:', validation.errors);
       setValidationErrors(validation.errors);
@@ -78,6 +94,12 @@ const ChildManagement: React.FC<ChildManagementProps> = ({ onBack }) => {
       setShowAddModal(false);
       resetForm();
       loadChildren();
+
+      // Notify parent component (FamilyCalendar) that a child was created
+      if (onChildCreated) {
+        console.log('📢 Notifying parent component about child creation...');
+        onChildCreated();
+      }
     } else {
       console.error('❌ Failed to create child:', response.error);
       setError(response.error || 'Failed to create child');
@@ -95,12 +117,12 @@ const ChildManagement: React.FC<ChildManagementProps> = ({ onBack }) => {
     // Clear previous validation errors
     setValidationErrors([]);
     setError(null);
-    
+
     // Validate child data for update
     const validation = validateChildForUpdate(formData);
-    
+
     if (!validation.isValid) {
-      console.warn('⚠️ Update child validation failed:', validation.errors);
+      console.warn('Update child validation failed:', validation.errors);
       setValidationErrors(validation.errors);
       return;
     }
@@ -113,9 +135,16 @@ const ChildManagement: React.FC<ChildManagementProps> = ({ onBack }) => {
     if (response.success) {
       console.log('✅ Child updated successfully:', response.data);
       setSuccess('Child updated successfully!');
+      setShowAddModal(false);
       setEditingChild(null);
       resetForm();
       loadChildren();
+
+      // Notify parent component (FamilyCalendar) that a child was updated
+      if (onChildCreated) {
+        console.log('📢 Notifying parent component about child update...');
+        onChildCreated();
+      }
     } else {
       console.error('❌ Failed to update child:', response.error);
       setError(response.error || 'Failed to update child');
@@ -131,7 +160,7 @@ const ChildManagement: React.FC<ChildManagementProps> = ({ onBack }) => {
     }
 
     setError(null);
-    
+
     console.log('🗑️ Deleting child with ID:', childId);
     const response = await childApiService.deleteChild(childId);
 
@@ -139,6 +168,12 @@ const ChildManagement: React.FC<ChildManagementProps> = ({ onBack }) => {
       console.log('✅ Child deleted successfully');
       setSuccess('Child deleted successfully!');
       loadChildren();
+
+      // Notify parent component (FamilyCalendar) that a child was deleted
+      if (onChildCreated) {
+        console.log('📢 Notifying parent component about child deletion...');
+        onChildCreated();
+      }
     } else {
       console.error('❌ Failed to delete child:', response.error);
       setError(response.error || 'Failed to delete child');
@@ -146,15 +181,16 @@ const ChildManagement: React.FC<ChildManagementProps> = ({ onBack }) => {
   };
 
   const openEditModal = (child: Child) => {
+    console.log('✏️ Opening edit modal for child:', child.id);
     setEditingChild(child);
-    
+
     // Convert ISO date to YYYY-MM-DD format for date input
     const formatDateForInput = (isoDate: string) => {
       if (!isoDate) return '';
       const date = new Date(isoDate);
       return date.toISOString().split('T')[0];
     };
-    
+
     setFormData({
       name: child.name,
       gradeLevel: child.gradeLevel,
@@ -196,6 +232,24 @@ const ChildManagement: React.FC<ChildManagementProps> = ({ onBack }) => {
     }
   }, [error]);
 
+  const getUpcomingEvents = async () => {
+    console.log("getting upcoming events");
+    try {
+      const response = await eventApiService.getEvents();
+      if (response.success && response.data) {
+        console.log("upcoming events are:", response.data.events);
+        setUpcomingEvents(response.data.events);
+        console.log("upcoming events are:", upcomingEvents);
+      } else {
+        console.error("error getting upcoming events:", response.error);
+        setUpcomingEvents([]);
+      }
+    } catch (error) {
+      console.error("error getting upcoming events:", error);
+      setUpcomingEvents([]);
+    }
+  };
+
   // Using grade options from validation utility to ensure consistency
   const gradeOptions = VALID_GRADE_LEVELS;
 
@@ -216,18 +270,7 @@ const ChildManagement: React.FC<ChildManagementProps> = ({ onBack }) => {
       <div className="max-w-6xl mx-auto">
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center space-x-4">
-            <button
-              onClick={onBack}
-              className="p-2 hover:bg-gray-200 rounded-lg transition-colors flex items-center space-x-2"
-              title="Back to Calendar"
-            >
-              <ArrowLeft className="w-5 h-5" />
-              <span className="text-sm">Calendar</span>
-            </button>
-            <div className="flex items-center space-x-3">
-              <Users className="w-8 h-8 text-purple-600" />
-              <h1 className="text-3xl font-bold text-gray-800">Child Management</h1>
-            </div>
+            <h3 className='text-2xl font-bold'>My Children</h3>
           </div>
           <button
             onClick={() => setShowAddModal(true)}
@@ -267,7 +310,7 @@ const ChildManagement: React.FC<ChildManagementProps> = ({ onBack }) => {
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="flex flex-col gap-6">
             {children.map((child) => (
               <div key={child.id} className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
                 <div className="flex items-center justify-between mb-4">
@@ -278,6 +321,7 @@ const ChildManagement: React.FC<ChildManagementProps> = ({ onBack }) => {
                     <div>
                       <h3 className="text-lg font-semibold text-gray-800">{child.name}</h3>
                       <p className="text-sm text-gray-600">{child.gradeLevel}</p>
+                      <p className="text-sm text-gray-600">{child.schoolName}</p>
                     </div>
                   </div>
                   <div className="flex space-x-2">
@@ -297,17 +341,30 @@ const ChildManagement: React.FC<ChildManagementProps> = ({ onBack }) => {
                     </button>
                   </div>
                 </div>
-                
+
                 <div className="space-y-2">
-                  <div>
-                    <span className="text-sm font-medium text-gray-500">School:</span>
-                    <p className="text-sm text-gray-800">{child.schoolName}</p>
-                  </div>
-                  <div>
-                    <span className="text-sm font-medium text-gray-500">Birth Date:</span>
-                    <p className="text-sm text-gray-800">
-                      {new Date(child.birthDate).toLocaleDateString()}
-                    </p>
+                  <hr />
+                  <div className='text-sm text-gray-600'>
+                    <p className='font-bold text-left'>Upcoming Events</p>
+                    {/* fileter upcoming events according to child id */}
+                    {upcomingEvents
+                      .filter((event) => event.children?.some((c) => c.id === child.id))
+                      .map((event) => (
+                        <div key={event.id}>
+                          <div className="flex">
+                            <p
+                              className={`w-6 h-6 mt-1 mr-1 rounded-full ${eventTypes[event.type as keyof typeof eventTypes]?.color || "bg-gray-400"
+                                }`}
+                            ></p>
+                            <p className="text-left text-xl font-bold">{event.title}</p>
+                          </div>
+                        </div>
+                      ))}
+
+                    {upcomingEvents.filter((event) => event.children?.some((c) => c.id === child.id)).length === 0 && (
+                      <p className="text-gray-500">No upcoming events</p>
+                    )}
+
                   </div>
                 </div>
               </div>
@@ -331,7 +388,7 @@ const ChildManagement: React.FC<ChildManagementProps> = ({ onBack }) => {
                 <X className="w-5 h-5" />
               </button>
             </div>
-            
+
             <div className="p-6">
               {/* Validation Errors Display */}
               {validationErrors.length > 0 && (
@@ -344,7 +401,7 @@ const ChildManagement: React.FC<ChildManagementProps> = ({ onBack }) => {
                   </ul>
                 </div>
               )}
-              
+
               <form
                 onSubmit={(e) => {
                   e.preventDefault();
@@ -427,7 +484,7 @@ const ChildManagement: React.FC<ChildManagementProps> = ({ onBack }) => {
                         const monthDiff = today.getMonth() - birthDate.getMonth();
                         const dayDiff = today.getDate() - birthDate.getDate();
                         const actualAge = (monthDiff < 0 || (monthDiff === 0 && dayDiff < 0)) ? age - 1 : age;
-                        return `Age: ${actualAge} years (valid range: 3-19 years)`;
+                        return `Age: ${actualAge} years (valid range: 0-21 years)`;
                       })()}
                     </div>
                   )}

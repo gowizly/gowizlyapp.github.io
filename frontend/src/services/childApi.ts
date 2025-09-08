@@ -1,15 +1,7 @@
 import { getCookie } from '../utils/cookies';
 import { API_BASE_URL } from '../config/environment';
 
-// API Configuration
-const POSSIBLE_ENDPOINTS = [
-  '/api/children/',     // Most common API format
-  '/api/children',      // Without trailing slash
-  '/children/',         // Original format from user spec
-  '/children',          // Without trailing slash
-];
-
-console.log('🔧 Child API Service initialized with base URL:', API_BASE_URL);
+const CHILD_ENDPOINTS = '/api/children/'
 
 export interface Child {
   id?: number;
@@ -27,7 +19,6 @@ export interface ApiResponse<T> {
 }
 
 class ChildApiService {
-  private correctEndpoint: string | null = null;
 
   private getAuthHeaders(): Record<string, string> {
     const token = getCookie('auth_token');
@@ -35,38 +26,6 @@ class ChildApiService {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${token}`,
     };
-  }
-
-  // Auto-detect the correct API endpoint
-  private async findCorrectEndpoint(): Promise<string> {
-    if (this.correctEndpoint) {
-      return this.correctEndpoint;
-    }
-
-    for (const endpoint of POSSIBLE_ENDPOINTS) {
-      try {
-        console.log(`🔍 Testing endpoint: ${API_BASE_URL}${endpoint}`);
-        const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-          method: 'GET',
-          headers: this.getAuthHeaders(),
-        });
-        
-        // If we get any response other than 404, this endpoint exists
-        if (response.status !== 404) {
-          console.log(`✅ Found working endpoint: ${endpoint}`);
-          this.correctEndpoint = endpoint;
-          return endpoint;
-        }
-      } catch (error) {
-        console.log(`❌ Endpoint ${endpoint} failed:`, error);
-        continue;
-      }
-    }
-    
-    // Default to first endpoint if none work
-    console.log(`⚠️ No working endpoint found, using default: ${POSSIBLE_ENDPOINTS[0]}`);
-    this.correctEndpoint = POSSIBLE_ENDPOINTS[0];
-    return this.correctEndpoint;
   }
 
   private async handleResponse<T>(response: Response): Promise<ApiResponse<T>> {
@@ -134,7 +93,7 @@ class ChildApiService {
       console.log('📤 Request payload:', JSON.stringify(childData, null, 2));
       console.log('📤 Request headers:', this.getAuthHeaders());
       
-      const endpoint = await this.findCorrectEndpoint();
+      const endpoint = CHILD_ENDPOINTS;
       
       const response = await fetch(`${API_BASE_URL}${endpoint}`, {
         method: 'POST',
@@ -173,7 +132,7 @@ class ChildApiService {
   async getChildren(): Promise<ApiResponse<Child[]>> {
     try {
       console.log('📋 Fetching children...');
-      const endpoint = await this.findCorrectEndpoint();
+      const endpoint = CHILD_ENDPOINTS;
       
       const response = await fetch(`${API_BASE_URL}${endpoint}`, {
         method: 'GET',
@@ -211,7 +170,7 @@ class ChildApiService {
   async updateChild(childId: number, childData: Partial<Child>): Promise<ApiResponse<Child>> {
     try {
       console.log('✏️ Updating child:', childId, childData);
-      const endpoint = await this.findCorrectEndpoint();
+      const endpoint = CHILD_ENDPOINTS;
       // Remove trailing slash for individual resource
       const baseEndpoint = endpoint.replace(/\/$/, '');
       
@@ -252,7 +211,7 @@ class ChildApiService {
   async deleteChild(childId: number): Promise<ApiResponse<void>> {
     try {
       console.log('🗑️ Deleting child:', childId);
-      const endpoint = await this.findCorrectEndpoint();
+      const endpoint = CHILD_ENDPOINTS;
       // Remove trailing slash for individual resource
       const baseEndpoint = endpoint.replace(/\/$/, '');
       
@@ -286,7 +245,7 @@ class ChildApiService {
   async testConnection(): Promise<ApiResponse<string>> {
     try {
       console.log('🔗 Testing API connection...');
-      const endpoint = await this.findCorrectEndpoint();
+      const endpoint = CHILD_ENDPOINTS;
       
       const response = await fetch(`${API_BASE_URL}${endpoint}`, {
         method: 'GET',
@@ -296,7 +255,7 @@ class ChildApiService {
       if (response.status === 404) {
         return {
           success: false,
-          error: `Children API endpoint not found. Tried: ${POSSIBLE_ENDPOINTS.join(', ')}. Please check if your backend server is running and has the children endpoints implemented.`
+          error: `Children API endpoint not found. Tried: ${CHILD_ENDPOINTS}. Please check if your backend server is running and has the children endpoints implemented.`
         };
       }
 

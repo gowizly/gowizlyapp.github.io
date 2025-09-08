@@ -53,11 +53,6 @@ export const validateEvent = (eventData: Partial<Event>): ValidationResult => {
       
       if (isNaN(endDate.getTime())) {
         errors.push({ field: 'endDate', message: 'End date must be a valid date' });
-      } else if (eventData.startDate) {
-        const startDate = new Date(eventData.startDate);
-        if (endDate <= startDate) {
-          errors.push({ field: 'endDate', message: 'End date must be after start date' });
-        }
       }
     }
   }
@@ -90,11 +85,9 @@ export const validateEvent = (eventData: Partial<Event>): ValidationResult => {
       errors.push({ field: 'color', message: 'Color must be a valid hex color code' });
     }
   }
-
-  // Child ID validation
   if (eventData.childId !== undefined) {
-    if (eventData.childId !== null && (!Number.isInteger(eventData.childId) || eventData.childId < 1)) {
-      errors.push({ field: 'childId', message: 'Child ID must be a positive integer' });
+    if (eventData.childId !== null && (!Number.isInteger(eventData.childId) || eventData.childId < -1)) {
+      errors.push({ field: 'childId', message: 'Child ID must be -1, 0, or a positive integer' });
     }
   }
 
@@ -127,8 +120,9 @@ export const validateEventForCreation = (eventData: Omit<Event, 'id'>): Validati
     errors.push({ field: 'type', message: 'Event type is required' });
   }
 
-  if (eventData.childId === null || eventData.childId === undefined) {
-    errors.push({ field: 'childId', message: 'Please select a child' });
+  if (eventData.childId === undefined || 
+      (typeof eventData.childId === 'number' && eventData.childId < -1)) {
+    errors.push({ field: 'childId', message: 'Please select an assignment option' });
   }
 
   // Run standard validation

@@ -75,8 +75,8 @@ export const validateChild = (childData: Partial<Child>): ValidationResult => {
       // Adjust age if birthday hasn't occurred this year
       const actualAge = (monthDiff < 0 || (monthDiff === 0 && dayDiff < 0)) ? age - 1 : age;
       
-      if (actualAge < 3 || actualAge > 19) {
-        errors.push({ field: 'birthDate', message: 'Child must be between 3 and 19 years old' });
+      if (actualAge < 0 || actualAge > 21) {
+        errors.push({ field: 'birthDate', message: 'Child must be between 0 and 21 years old' });
       }
     }
   }

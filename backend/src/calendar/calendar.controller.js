@@ -2,105 +2,44 @@ import prisma from "../config/db.js";
 import calendarService from "../services/calendar.service.js";
 import { logInfo, logError, logWarn, logDebug } from "../utils/logger.js";
 
-// Get all events for a user (with optional filtering)
-export const getAllEvents = async (req, res) => {
-  try {
-    const { childId, type, limit = 50, offset = 0 } = req.query;
-    
-    logInfo('Get all events request', { 
-      userId: req.user.id, 
-      childId, 
-      type, 
-      limit: parseInt(limit),
-      offset: parseInt(offset)
-    });
+// Helper function to extract time from datetime
+const extractTimeFromDate = (dateTime) => {
+  if (!dateTime) return null;
+  const date = new Date(dateTime);
+  return date.toTimeString().slice(0, 8); // Returns HH:MM:SS format
+};
 
-    // Build filter conditions
-    const whereConditions = {
-      parentId: req.user.id
-    };
-
-    // Filter by child if specified
-    if (childId) {
-      const childIdInt = parseInt(childId);
-      if (isNaN(childIdInt)) {
-        logWarn('Invalid childId in get all events request', { userId: req.user.id, childId });
-        return res.status(400).json({
-          success: false,
-          msg: "Invalid child ID"
-        });
-      }
-
-      // Verify child belongs to user
-      const child = await prisma.child.findFirst({
-        where: { id: childIdInt, parentId: req.user.id }
-      });
-
-      if (!child) {
-        logWarn('Child not found or unauthorized in get all events', { userId: req.user.id, childId: childIdInt });
-        return res.status(404).json({
-          success: false,
-          msg: "Child not found"
-        });
-      }
-
-      whereConditions.childId = childIdInt;
-    }
-
-    // Filter by event type if specified
-    if (type) {
-      whereConditions.type = type;
-    }
-
-    // Get events with pagination
-    const events = await prisma.event.findMany({
-      where: whereConditions,
-      include: {
-        child: {
-          select: {
-            id: true,
-            name: true
-          }
-        }
-      },
-      orderBy: { startDate: 'asc' },
-      take: parseInt(limit),
-      skip: parseInt(offset)
-    });
-
-    // Get total count for pagination
-    const totalEvents = await prisma.event.count({
-      where: whereConditions
-    });
-
-    logInfo('Retrieved all events successfully', { 
-      userId: req.user.id, 
-      eventsCount: events.length, 
-      totalEvents,
-      childId, 
-      type 
-    });
-
-    res.json({
-      success: true,
-      msg: "Events retrieved successfully",
-      data: {
-        events,
-        pagination: {
-          total: totalEvents,
-          limit: parseInt(limit),
-          offset: parseInt(offset),
-          hasMore: parseInt(offset) + events.length < totalEvents
-        }
-      }
-    });
-  } catch (error) {
-    logError("Get all events error", error, { userId: req.user?.id });
-    res.status(500).json({
-      success: false,
-      msg: "Internal server error"
-    });
-  }
+// Helper function to format event with time information and children
+const formatEventWithTime = (event) => {
+  // Extract children from eventChildren relationship
+  const children = event.eventChildren ? event.eventChildren.map(ec => ({
+    id: ec.child.id,
+    name: ec.child.name
+  })) : [];
+  
+  return {
+    id: event.id,
+    title: event.title,
+    description: event.description,
+    startDate: event.startDate,
+    endDate: event.endDate,
+    isAllDay: event.isAllDay,
+    type: event.type,
+    priority: event.priority,
+    color: event.color,
+    hasReminder: event.hasReminder,
+    reminderMinutes: event.reminderMinutes,
+    parentId: event.parentId,
+    createdAt: event.createdAt,
+    updatedAt: event.updatedAt,
+    children, // Array of children objects
+    startTime: extractTimeFromDate(event.startDate),
+    endTime: extractTimeFromDate(event.endDate),
+    startDateOnly: event.startDate ? new Date(event.startDate).toISOString().split('T')[0] : null,
+    endDateOnly: event.endDate ? new Date(event.endDate).toISOString().split('T')[0] : null,
+    // Remove eventChildren from the response to keep it clean
+    eventChildren: undefined
+  };
 };
 
 // Get monthly calendar view with events
@@ -163,10 +102,11 @@ export const getMonthlyCalendar = async (req, res) => {
     // Generate calendar grid
     const calendarGrid = calendarService.generateCalendarGrid(targetYear, targetMonth);
 
-    // Format events for calendar display
-    const formattedEvents = events.map(event => 
-      calendarService.formatEventForCalendar(event)
-    );
+    // Format events for calendar display with time information
+    const formattedEvents = events.map(event => {
+      const calendarEvent = calendarService.formatEventForCalendar(event);
+      return formatEventWithTime(calendarEvent);
+    });
 
     // Group events by date for easier frontend consumption
     const eventsByDate = {};
@@ -243,9 +183,10 @@ export const getEventsByDateRange = async (req, res) => {
       childId
     );
 
-    const formattedEvents = events.map(event => 
-      calendarService.formatEventForCalendar(event)
-    );
+    const formattedEvents = events.map(event => {
+      const calendarEvent = calendarService.formatEventForCalendar(event);
+      return formatEventWithTime(calendarEvent);
+    });
 
     res.json({
       success: true,
@@ -292,9 +233,10 @@ export const getUpcomingEvents = async (req, res) => {
       parseInt(days)
     );
 
-    const formattedEvents = events.map(event => 
-      calendarService.formatEventForCalendar(event)
-    );
+    const formattedEvents = events.map(event => {
+      const calendarEvent = calendarService.formatEventForCalendar(event);
+      return formatEventWithTime(calendarEvent);
+    });
 
     res.json({
       success: true,
@@ -313,7 +255,120 @@ export const getUpcomingEvents = async (req, res) => {
   }
 };
 
-// Create a new event
+// Get all events for a user (with optional filtering)
+export const getAllEvents = async (req, res) => {
+  try {
+    const { childId, type, limit = 50, offset = 0 } = req.query;
+    
+    logInfo('Get all events request', { 
+      userId: req.user.id, 
+      childId, 
+      type, 
+      limit: parseInt(limit),
+      offset: parseInt(offset)
+    });
+
+    // Build filter conditions
+    const whereConditions = {
+      parentId: req.user.id
+    };
+
+    // Filter by child if specified
+    if (childId) {
+      const childIdInt = parseInt(childId);
+      if (isNaN(childIdInt)) {
+        logWarn('Invalid childId in get all events request', { userId: req.user.id, childId });
+        return res.status(400).json({
+          success: false,
+          msg: "Invalid child ID"
+        });
+      }
+
+      // Verify child belongs to user
+      const child = await prisma.child.findFirst({
+        where: { id: childIdInt, parentId: req.user.id }
+      });
+
+      if (!child) {
+        logWarn('Child not found or unauthorized in get all events', { userId: req.user.id, childId: childIdInt });
+        return res.status(404).json({
+          success: false,
+          msg: "Child not found"
+        });
+      }
+
+      // Filter events that include this child
+      whereConditions.eventChildren = {
+        some: {
+          childId: childIdInt
+        }
+      };
+    }
+
+    // Filter by event type if specified
+    if (type) {
+      whereConditions.type = type;
+    }
+
+    // Get events with pagination
+    const events = await prisma.event.findMany({
+      where: whereConditions,
+      include: {
+        eventChildren: {
+          include: {
+            child: {
+              select: {
+                id: true,
+                name: true
+              }
+            }
+          }
+        }
+      },
+      orderBy: { startDate: 'asc' },
+      take: parseInt(limit),
+      skip: parseInt(offset)
+    });
+
+    // Get total count for pagination
+    const totalEvents = await prisma.event.count({
+      where: whereConditions
+    });
+
+    // Format events with time information
+    const eventsWithTime = events.map(formatEventWithTime);
+
+    logInfo('Retrieved all events successfully', { 
+      userId: req.user.id, 
+      eventsCount: events.length, 
+      totalEvents,
+      childId, 
+      type 
+    });
+
+    res.json({
+      success: true,
+      msg: "Events retrieved successfully",
+      data: {
+        events: eventsWithTime,
+        pagination: {
+          total: totalEvents,
+          limit: parseInt(limit),
+          offset: parseInt(offset),
+          hasMore: parseInt(offset) + events.length < totalEvents
+        }
+      }
+    });
+  } catch (error) {
+    logError("Get all events error", error, { userId: req.user?.id });
+    res.status(500).json({
+      success: false,
+      msg: "Internal server error"
+    });
+  }
+};
+
+// Updated createEvent function with better debugging and fixed child handling
 export const createEvent = async (req, res) => {
   try {
     const {
@@ -321,6 +376,8 @@ export const createEvent = async (req, res) => {
       description,
       startDate,
       endDate,
+      startTime,
+      endTime,
       isAllDay = false,
       type = 'OTHER',
       priority = 'MEDIUM',
@@ -330,67 +387,335 @@ export const createEvent = async (req, res) => {
       reminderMinutes
     } = req.body;
 
-    // Verify child belongs to user if childId is provided
-    if (childId) {
+    logInfo('Create event request', { 
+      userId: req.user.id, 
+      title, 
+      childId,
+      isAllDay,
+      type 
+    });
+
+    // Combine date and time if provided
+    let finalStartDate = new Date(startDate);
+    let finalEndDate = endDate ? new Date(endDate) : null;
+
+    // If time is provided and it's not an all-day event, combine date and time
+    if (!isAllDay && startTime) {
+      const [hours, minutes, seconds = '00'] = startTime.split(':');
+      finalStartDate.setHours(parseInt(hours), parseInt(minutes), parseInt(seconds || '0'));
+    }
+
+    if (!isAllDay && endTime && finalEndDate) {
+      const [hours, minutes, seconds = '00'] = endTime.split(':');
+      finalEndDate.setHours(parseInt(hours), parseInt(minutes), parseInt(seconds || '0'));
+    }
+
+    let targetChildren = [];
+
+    // Handle child selection logic
+    if (childId === null || childId === undefined || childId === '') {
+      // Get all children for the user when childId is null/undefined/empty
+      logDebug('Creating event for all children', { userId: req.user.id });
+      
+      const allChildren = await prisma.child.findMany({
+        where: { parentId: req.user.id },
+        select: { id: true, name: true }
+      });
+
+      if (allChildren.length === 0) {
+        logWarn('No children found for user when creating event for all', { userId: req.user.id });
+        return res.status(400).json({
+          success: false,
+          msg: "No children found. Please add children first."
+        });
+      }
+
+      targetChildren = allChildren;
+      logDebug('Event will be created for all children', { 
+        userId: req.user.id, 
+        childrenCount: allChildren.length,
+        childrenIds: allChildren.map(c => c.id)
+      });
+    } else {
+      // Verify specific child belongs to user
+      logDebug('Creating event for specific child', { userId: req.user.id, childId });
+      
       const child = await prisma.child.findFirst({
         where: {
           id: parseInt(childId),
           parentId: req.user.id
-        }
+        },
+        select: { id: true, name: true }
       });
 
       if (!child) {
+        logWarn('Child not found for event creation', { userId: req.user.id, childId });
         return res.status(404).json({
           success: false,
           msg: "Child not found"
         });
       }
+
+      targetChildren = [child];
+      logDebug('Event will be created for specific child', { 
+        userId: req.user.id, 
+        child: child
+      });
     }
 
-    // Check for conflicting events if needed
-    const conflicts = await calendarService.getConflictingEvents(
-      req.user.id,
-      startDate,
-      endDate
-    );
+    // Check for conflicting events
+    // const conflicts = await calendarService.getConflictingEvents(
+    //   req.user.id,
+    //   finalStartDate,
+    //   finalEndDate
+    // );
 
+    // Create event with children relationships
     const event = await prisma.event.create({
       data: {
         title,
         description,
-        startDate: new Date(startDate),
-        endDate: endDate ? new Date(endDate) : null,
+        startDate: finalStartDate,
+        endDate: finalEndDate,
         isAllDay,
         type,
         priority,
         color: color || calendarService.getEventTypeColors()[type],
         parentId: req.user.id,
-        childId: childId ? parseInt(childId) : null,
         hasReminder,
-        reminderMinutes: hasReminder ? reminderMinutes : null
+        reminderMinutes: hasReminder ? reminderMinutes : null,
+        eventChildren: {
+          create: targetChildren.map(child => ({
+            childId: child.id
+          }))
+        }
       },
       include: {
-        child: {
-          select: {
-            id: true,
-            name: true
+        eventChildren: {
+          include: {
+            child: {
+              select: {
+                id: true,
+                name: true
+              }
+            }
           }
         }
       }
     });
 
-    const formattedEvent = calendarService.formatEventForCalendar(event);
+    logDebug('Event created in database', { 
+      userId: req.user.id, 
+      eventId: event.id,
+      eventChildrenCount: event.eventChildren?.length || 0,
+      eventChildren: event.eventChildren?.map(ec => ({ childId: ec.childId, childName: ec.child?.name }))
+    });
+
+    // Format the event directly (no need to use calendarService first since we have all the data)
+    const formattedEvent = formatEventWithTime(event);
+
+    logInfo('Event created successfully', { 
+      userId: req.user.id, 
+      eventId: event.id,
+      childrenCount: targetChildren.length,
+      title,
+      formattedEventChildrenCount: formattedEvent.children?.length || 0
+    });
 
     res.status(201).json({
       success: true,
-      msg: "Event created successfully",
+      msg: `Event created successfully for ${targetChildren.length} child${targetChildren.length > 1 ? 'ren' : ''}`,
       data: {
         event: formattedEvent,
-        conflicts: conflicts.length > 0 ? conflicts.map(c => calendarService.formatEventForCalendar(c)) : []
+        // conflicts: conflicts.length > 0 ? conflicts.map(c => formatEventWithTime(calendarService.formatEventForCalendar(c))) : [],
+        childrenCount: targetChildren.length
       }
     });
   } catch (error) {
-    console.error("Create event error:", error);
+    logError("Create event error", error, { userId: req.user?.id });
+    res.status(500).json({
+      success: false,
+      msg: "Internal server error"
+    });
+  }
+};
+
+// Update an event (fixed to handle childId parameter correctly)
+export const updateEvent = async (req, res) => {
+  try {
+    const { eventId } = req.params;
+    const updateData = {};
+
+    logInfo('Update event request', { 
+      userId: req.user.id, 
+      eventId,
+      updateFields: Object.keys(req.body)
+    });
+
+    // Only include fields that are provided
+    const allowedFields = [
+      'title', 'description', 'startDate', 'endDate', 'startTime', 'endTime', 'isAllDay',
+      'type', 'priority', 'color', 'childId', 'hasReminder', 'reminderMinutes'
+    ];
+    
+    // Handle date and time combination
+    let finalStartDate = null;
+    let finalEndDate = null;
+
+    allowedFields.forEach(field => {
+      if (req.body[field] !== undefined) {
+        if (field === 'startDate') {
+          finalStartDate = new Date(req.body[field]);
+          // If startTime is also provided and it's not all day, combine them
+          if (req.body.startTime && !req.body.isAllDay) {
+            const [hours, minutes, seconds = '00'] = req.body.startTime.split(':');
+            finalStartDate.setHours(parseInt(hours), parseInt(minutes), parseInt(seconds || '0'));
+          }
+          updateData[field] = finalStartDate;
+        } else if (field === 'endDate') {
+          finalEndDate = req.body[field] ? new Date(req.body[field]) : null;
+          // If endTime is also provided and it's not all day, combine them
+          if (req.body.endTime && finalEndDate && !req.body.isAllDay) {
+            const [hours, minutes, seconds = '00'] = req.body.endTime.split(':');
+            finalEndDate.setHours(parseInt(hours), parseInt(minutes), parseInt(seconds || '0'));
+          }
+          updateData[field] = finalEndDate;
+        } else if (field === 'startTime' || field === 'endTime') {
+          // These are handled above when processing dates
+          // Skip adding them to updateData as separate fields
+        } else if (field === 'childId') {
+          // Handle childId specially - will be processed below
+          // Don't add to updateData yet
+        } else {
+          updateData[field] = req.body[field];
+        }
+      }
+    });
+
+    if (Object.keys(updateData).length === 0 && req.body.childId === undefined) {
+      logWarn('No valid fields provided for update', { userId: req.user.id, eventId });
+      return res.status(400).json({
+        success: false,
+        msg: "No valid fields provided for update"
+      });
+    }
+
+    // First, get the existing event to verify ownership
+    const existingEvent = await prisma.event.findFirst({
+      where: {
+        id: parseInt(eventId),
+        parentId: req.user.id
+      },
+      include: {
+        eventChildren: {
+          include: {
+            child: {
+              select: { id: true, name: true }
+            }
+          }
+        }
+      }
+    });
+
+    if (!existingEvent) {
+      logWarn('Event not found for update', { userId: req.user.id, eventId });
+      return res.status(404).json({
+        success: false,
+        msg: "Event not found"
+      });
+    }
+
+    updateData.updatedAt = new Date();
+
+    // Handle child relationships update
+    let childUpdateOperations = {};
+    if (req.body.hasOwnProperty('childId')) {
+      const childId = req.body.childId;
+      
+      if (childId === null || childId === undefined || childId === '') {
+        // Apply to all children when childId is null/undefined/empty
+        const allChildren = await prisma.child.findMany({
+          where: { parentId: req.user.id },
+          select: { id: true }
+        });
+        
+        if (allChildren.length === 0) {
+          return res.status(400).json({
+            success: false,
+            msg: "No children found. Please add children first."
+          });
+        }
+
+        // Delete existing relationships and create new ones for all children
+        childUpdateOperations = {
+          deleteMany: {},
+          create: allChildren.map(child => ({ childId: child.id }))
+        };
+      } else {
+        // Verify child belongs to user
+        const child = await prisma.child.findFirst({
+          where: {
+            id: parseInt(childId),
+            parentId: req.user.id
+          }
+        });
+
+        if (!child) {
+          return res.status(404).json({
+            success: false,
+            msg: "Child not found"
+          });
+        }
+
+        // Delete existing relationships and create new one for specific child
+        childUpdateOperations = {
+          deleteMany: {},
+          create: [{ childId: parseInt(childId) }]
+        };
+      }
+    }
+
+    // Update event
+    const updatedEvent = await prisma.event.update({
+      where: {
+        id: parseInt(eventId),
+        parentId: req.user.id
+      },
+      data: {
+        ...updateData,
+        ...(Object.keys(childUpdateOperations).length > 0 && {
+          eventChildren: childUpdateOperations
+        })
+      },
+      include: {
+        eventChildren: {
+          include: {
+            child: {
+              select: {
+                id: true,
+                name: true
+              }
+            }
+          }
+        }
+      }
+    });
+
+    const formattedEvent = formatEventWithTime(updatedEvent);
+
+    logInfo('Event updated successfully', { 
+      userId: req.user.id, 
+      eventId,
+      childrenCount: updatedEvent.eventChildren.length 
+    });
+
+    res.json({
+      success: true,
+      msg: "Event updated successfully",
+      data: { event: formattedEvent }
+    });
+  } catch (error) {
+    logError("Update event error", error, { userId: req.user?.id, eventId: req.params?.eventId });
     res.status(500).json({
       success: false,
       msg: "Internal server error"
@@ -409,10 +734,14 @@ export const getEventById = async (req, res) => {
         parentId: req.user.id
       },
       include: {
-        child: {
-          select: {
-            id: true,
-            name: true
+        eventChildren: {
+          include: {
+            child: {
+              select: {
+                id: true,
+                name: true
+              }
+            }
           }
         }
       }
@@ -425,7 +754,7 @@ export const getEventById = async (req, res) => {
       });
     }
 
-    const formattedEvent = calendarService.formatEventForCalendar(event);
+    const formattedEvent = formatEventWithTime(event);
 
     res.json({
       success: true,
@@ -433,101 +762,6 @@ export const getEventById = async (req, res) => {
     });
   } catch (error) {
     console.error("Get event by ID error:", error);
-    res.status(500).json({
-      success: false,
-      msg: "Internal server error"
-    });
-  }
-};
-
-// Update an event
-export const updateEvent = async (req, res) => {
-  try {
-    const { eventId } = req.params;
-    const updateData = {};
-
-    // Only include fields that are provided
-    const allowedFields = [
-      'title', 'description', 'startDate', 'endDate', 'isAllDay',
-      'type', 'priority', 'color', 'childId', 'hasReminder', 'reminderMinutes'
-    ];
-    
-    allowedFields.forEach(field => {
-      if (req.body[field] !== undefined) {
-        if (field === 'startDate' || field === 'endDate') {
-          updateData[field] = req.body[field] ? new Date(req.body[field]) : null;
-        } else if (field === 'childId') {
-          updateData[field] = req.body[field] ? parseInt(req.body[field]) : null;
-        } else {
-          updateData[field] = req.body[field];
-        }
-      }
-    });
-
-    if (Object.keys(updateData).length === 0) {
-      return res.status(400).json({
-        success: false,
-        msg: "No valid fields provided for update"
-      });
-    }
-
-    // Verify child belongs to user if childId is being updated
-    if (updateData.childId) {
-      const child = await prisma.child.findFirst({
-        where: {
-          id: updateData.childId,
-          parentId: req.user.id
-        }
-      });
-
-      if (!child) {
-        return res.status(404).json({
-          success: false,
-          msg: "Child not found"
-        });
-      }
-    }
-
-    updateData.updatedAt = new Date();
-
-    // Update event
-    const updatedEvent = await prisma.event.updateMany({
-      where: {
-        id: parseInt(eventId),
-        parentId: req.user.id
-      },
-      data: updateData
-    });
-
-    if (updatedEvent.count === 0) {
-      return res.status(404).json({
-        success: false,
-        msg: "Event not found"
-      });
-    }
-
-    // Fetch updated event data
-    const event = await prisma.event.findUnique({
-      where: { id: parseInt(eventId) },
-      include: {
-        child: {
-          select: {
-            id: true,
-            name: true
-          }
-        }
-      }
-    });
-
-    const formattedEvent = calendarService.formatEventForCalendar(event);
-
-    res.json({
-      success: true,
-      msg: "Event updated successfully",
-      data: { event: formattedEvent }
-    });
-  } catch (error) {
-    console.error("Update event error:", error);
     res.status(500).json({
       success: false,
       msg: "Internal server error"
