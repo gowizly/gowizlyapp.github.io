@@ -7,9 +7,9 @@ const EventTypeLegend: React.FC = () => {
     SCHOOL_EVENT: { color: 'bg-blue-500', label: 'School Event' },
     PARENT_MEETING: { color: 'bg-green-500', label: 'Parent Meeting' },
     HOLIDAY: { color: 'bg-yellow-500', label: 'Holiday' },
-    BIRTHDAY: { color: 'bg-yellow-500', label: 'Birthday' },
-    APPOINTMENT: { color: 'bg-yellow-500', label: 'Appointment' },
-    REMINDER: { color: 'bg-yellow-500', label: 'Reminder' },
+    BIRTHDAY: { color: 'bg-pink-500', label: 'Birthday' },
+    APPOINTMENT: { color: 'bg-indigo-500', label: 'Appointment' },
+    REMINDER: { color: 'bg-cyan-500', label: 'Reminder' },
     EXAM: { color: 'bg-orange-500', label: 'Exam' },
     OTHER: { color: 'bg-gray-500', label: 'Other' }
   };

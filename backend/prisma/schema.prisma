@@ -48,8 +48,8 @@ model Child {
   parentId        Int
   parent          User      @relation(fields: [parentId], references: [id], onDelete: Cascade)
   
-  // Relationships
-  events          Event[]
+  // Relationships - many-to-many through EventChild
+  eventChildren   EventChild[]
   
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
@@ -82,16 +82,31 @@ model Event {
   parentId        Int
   parent          User      @relation(fields: [parentId], references: [id], onDelete: Cascade)
   
-  childId         Int?      // Optional - event can be for specific child
-  child           Child?    @relation(fields: [childId], references: [id], onDelete: Cascade)
+  // Many-to-many relationship with children
+  eventChildren   EventChild[]
   
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
   
   @@index([parentId])
-  @@index([childId])
   @@index([startDate])
   @@index([type])
+}
+
+// Junction table for many-to-many relationship between Events and Children
+model EventChild {
+  id      Int   @id @default(autoincrement())
+  eventId Int
+  childId Int
+  
+  // Relationships
+  event   Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  child   Child @relation(fields: [childId], references: [id], onDelete: Cascade)
+  
+  // Ensure unique combination of event and child
+  @@unique([eventId, childId])
+  @@index([eventId])
+  @@index([childId])
 }
 
 enum EventType {

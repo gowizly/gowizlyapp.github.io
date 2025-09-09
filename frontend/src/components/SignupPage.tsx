@@ -21,6 +21,8 @@ const SignupPage: React.FC<SignupPageProps> = ({ onSwitchToLogin }) => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showTermsModal, setShowTermsModal] = useState(false);
+  const [showPrivacyModal, setShowPrivacyModal] = useState(false);
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -212,11 +214,19 @@ const SignupPage: React.FC<SignupPageProps> = ({ onSwitchToLogin }) => {
               />
               <span className="text-sm text-gray-700">
                 I agree to the{' '}
-                <button type="button" className="text-purple-600 hover:text-purple-700 underline">
+                <button 
+                  type="button" 
+                  onClick={() => setShowTermsModal(true)}
+                  className="text-purple-600 hover:text-purple-700 underline"
+                >
                   Terms and Conditions
                 </button>{' '}
                 and{' '}
-                <button type="button" className="text-purple-600 hover:text-purple-700 underline">
+                <button 
+                  type="button"
+                  onClick={() => setShowPrivacyModal(true)} 
+                  className="text-purple-600 hover:text-purple-700 underline"
+                >
                   Privacy Policy
                 </button>
               </span>
@@ -247,6 +257,66 @@ const SignupPage: React.FC<SignupPageProps> = ({ onSwitchToLogin }) => {
           </div>
         </form>
       </div>
+
+      {/* Terms and Conditions Modal */}
+      {showTermsModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-2xl w-full max-w-2xl max-h-[80vh] overflow-hidden">
+            <div className="bg-purple-600 text-white p-4 flex justify-between items-center">
+              <h3 className="text-lg font-semibold">Terms and Conditions</h3>
+              <button
+                onClick={() => setShowTermsModal(false)}
+                className="text-white hover:bg-purple-700 rounded-lg p-2 transition-colors"
+              >
+                ×
+              </button>
+            </div>
+            <div className="p-6">
+              <p className="text-gray-700">
+                By using GoWizly Family Calendar, you agree to our terms of service and accept responsibility for your account usage.
+              </p>
+            </div>
+            <div className="p-4 border-t bg-gray-50 flex justify-end">
+              <button
+                onClick={() => setShowTermsModal(false)}
+                className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Privacy Policy Modal */}
+      {showPrivacyModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-2xl w-full max-w-2xl max-h-[80vh] overflow-hidden">
+            <div className="bg-purple-600 text-white p-4 flex justify-between items-center">
+              <h3 className="text-lg font-semibold">Privacy Policy</h3>
+              <button
+                onClick={() => setShowPrivacyModal(false)}
+                className="text-white hover:bg-purple-700 rounded-lg p-2 transition-colors"
+              >
+                ×
+              </button>
+            </div>
+            <div className="p-6">
+              <p className="text-gray-700">
+                We collect and protect your personal information to provide our family calendar services and will not share your data with third parties without your consent.
+              </p>
+            </div>
+            <div className="p-4 border-t bg-gray-50 flex justify-end">
+              <button
+                onClick={() => setShowPrivacyModal(false)}
+                className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
