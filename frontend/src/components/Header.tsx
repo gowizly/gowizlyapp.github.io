@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { Calendar, LogOut } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { API_BASE_URL } from '../config/environment';
 import Cookies from 'js-cookie';
 import axios from 'axios';
 
 const Header: React.FC = () => {
+  const navigate = useNavigate();
   const { logout } = useAuth();
   const [user, setUser] = useState<any>(null);
   
@@ -39,9 +41,12 @@ const Header: React.FC = () => {
         <h1 className="text-xl font-bold">GoWizly Family Calendar</h1>
       </div>
       <div className="flex items-center space-x-4">
-        <span className="text-sm hidden sm:inline">
+        <button
+          onClick={() => navigate('/user-management')}
+          className="px-3 py-2 hover:bg-purple-700 rounded-lg transition-colors text-sm cursor-pointer"
+        >
           Welcome, {user?.username}
-        </span>
+        </button>
         <button
           onClick={logout}
           className="p-2 hover:bg-purple-700 rounded-lg transition-colors flex items-center space-x-2"

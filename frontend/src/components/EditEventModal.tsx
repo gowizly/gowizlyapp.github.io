@@ -100,14 +100,14 @@ const EditEventModal: React.FC<EditEventModalProps> = ({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   // Format date for input field (YYYY-MM-DD)
-  const formatDateForInput = useCallback((isoDate: string) => {
+  const formatDateForInput = useCallback((isoDate?: string | null) => {
     if (!isoDate) return '';
     const date = new Date(isoDate);
     return date.toISOString().split('T')[0];
   }, []);
 
   // Extract time from datetime string (HH:MM format)
-  const extractTimeFromDateTime = useCallback((dateTimeString: string) => {
+  const extractTimeFromDateTime = useCallback((dateTimeString?: string | null) => {
     if (!dateTimeString) return '';
     const date = new Date(dateTimeString);
     if (isNaN(date.getTime())) return '';
@@ -119,7 +119,7 @@ const EditEventModal: React.FC<EditEventModalProps> = ({
     if (event && isOpen) {
       // Use startDateOnly/endDateOnly if available, otherwise extract from full datetime
       const startDateForInput = event.startDateOnly || formatDateForInput(event.startDate);
-      const endDateForInput = event.endDateOnly || formatDateForInput(event.endDate);
+      const endDateForInput = event.endDateOnly || formatDateForInput(event.endDate ?? null);
       
       // Determine childId - if event has children array and childId is null, it's for all children
       const eventChildId = event.childId || null;
@@ -130,7 +130,7 @@ const EditEventModal: React.FC<EditEventModalProps> = ({
         startDate: startDateForInput,
         endDate: endDateForInput,
         startTime: event.startTime || extractTimeFromDateTime(event.startDate) || '09:00',
-        endTime: event.endTime || extractTimeFromDateTime(event.endDate) || '10:00',
+        endTime: event.endTime || extractTimeFromDateTime(event.endDate ?? null) || '10:00',
         isAllDay: event.isAllDay || false,
         type: event.type,
         priority: event.priority,

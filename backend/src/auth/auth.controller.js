@@ -706,3 +706,210 @@ export const updateUserProfile = async (req, res) => {
     });
   }
 };
+
+// Get current user profile (authenticated user)
+export const getUserProfile = async (req, res) => {
+  try {
+    logInfo('Get user profile request', { userId: req.user.id });
+
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.id },
+      select: {
+        id: true,
+        username: true,
+        email: true,
+        address: true,
+        isVerified: true,
+        createdAt: true,
+        updatedAt: true
+      }
+    });
+
+    if (!user) {
+      logWarn('User not found in get profile', { userId: req.user.id });
+      return res.status(404).json({
+        success: false,
+        msg: "User not found"
+      });
+    }
+
+    logInfo('User profile retrieved successfully', { userId: req.user.id });
+
+    res.json({
+      success: true,
+      msg: "Profile retrieved successfully",
+      data: { user }
+    });
+
+  } catch (error) {
+    logError("Get user profile error", error, { userId: req.user?.id });
+    res.status(500).json({
+      success: false,
+      msg: "Internal server error"
+    });
+  }
+};
+
+// Update user profile (PATCH - partial update)
+export const patchUserProfile = async (req, res) => {
+  try {
+    const { username, email, address } = req.body;
+    
+    // Reject email update attempts
+    if (email !== undefined) {
+      logWarn('Email update attempt blocked', { userId: req.user.id });
+      return res.status(400).json({
+        success: false,
+        msg: "Email cannot be changed. Contact support if you need to update your email address."
+      });
+    }
+    
+    logInfo('Update user profile request', { 
+      userId: req.user.id, 
+      hasUsername: !!username,
+      hasAddress: !!address
+    });
+
+    // Build update data object with only provided fields (excluding email)
+    const updateData = {};
+    
+    if (username !== undefined) {
+      updateData.username = username;
+    }
+    
+    if (address !== undefined) {
+      updateData.address = address;
+    }
+
+    // If no fields provided, return error
+    if (Object.keys(updateData).length === 0) {
+      logWarn('No fields provided for update', { userId: req.user.id });
+      return res.status(400).json({
+        success: false,
+        msg: "No valid fields provided for update"
+      });
+    }
+
+    updateData.updatedAt = new Date();
+
+    // Check if username already exists (if being updated)
+    if (username) {
+      const existingUser = await prisma.user.findFirst({
+        where: {
+          AND: [
+            { id: { not: req.user.id } }, // Exclude current user
+            { username }
+          ]
+        }
+      });
+
+      if (existingUser) {
+        logWarn('Duplicate username in update', { 
+          userId: req.user.id, 
+          username
+        });
+        return res.status(400).json({
+          success: false,
+          msg: "Username already exists"
+        });
+      }
+    }
+
+    // Update user
+    const updatedUser = await prisma.user.update({
+      where: { id: req.user.id },
+      data: updateData,
+      select: {
+        id: true,
+        username: true,
+        email: true,
+        address: true,
+        isVerified: true,
+        createdAt: true,
+        updatedAt: true
+      }
+    });
+
+    logInfo('User profile updated successfully', { 
+      userId: req.user.id,
+      updatedFields: Object.keys(updateData)
+    });
+
+    res.json({
+      success: true,
+      msg: "Profile updated successfully",
+      data: { user: updatedUser }
+    });
+
+  } catch (error) {
+    if (error.code === 'P2002') {
+      const field = error.meta?.target?.[0] || 'field';
+      logWarn('Unique constraint violation in update', { 
+        userId: req.user.id, 
+        field,
+        error: error.message 
+      });
+      return res.status(400).json({
+        success: false,
+        msg: field === 'username' ? 'Username already exists' : 'Field already exists'
+      });
+    }
+
+    logError("Update user profile error", error, { userId: req.user?.id });
+    res.status(500).json({
+      success: false,
+      msg: "Internal server error"
+    });
+  }
+};
+
+// Delete user account (authenticated user) - Token-based deletion
+export const deleteUserAccount = async (req, res) => {
+  try {
+    logInfo('Delete user account request', { userId: req.user.id });
+
+    // Get user for logging purposes
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.id },
+      select: { id: true, username: true, email: true }
+    });
+
+    if (!user) {
+      logWarn('User not found for deletion', { userId: req.user.id });
+      return res.status(404).json({
+        success: false,
+        msg: "User not found"
+      });
+    }
+
+    // Delete user (cascading deletes will handle children and events)
+    await prisma.user.delete({
+      where: { id: req.user.id }
+    });
+
+    logInfo('User account deleted successfully', { 
+      userId: req.user.id,
+      username: user.username,
+      email: user.email
+    });
+
+    res.json({
+      success: true,
+      msg: "Account deleted successfully",
+      data: {
+        deletedUser: {
+          id: user.id,
+          username: user.username,
+          email: user.email
+        }
+      }
+    });
+
+  } catch (error) {
+    logError("Delete user account error", error, { userId: req.user?.id });
+    res.status(500).json({
+      success: false,
+      msg: "Internal server error"
+    });
+  }
+};

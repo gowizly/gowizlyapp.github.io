@@ -1,15 +1,19 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { API_BASE_URL as BASE_URL } from '../config/environment';
+import { API_BASE_URL } from '../config/environment';
 import axios from 'axios';
-import Cookies from 'js-cookie';
+import { getCookie, setCookie, deleteCookie } from '../utils/cookies';
 
-const API_BASE_URL = `${BASE_URL}/api/auth`;
+const AUTH_BASE_URL = `${API_BASE_URL}/api/auth`;
 
 interface User {
   id: string;
   name: string;
   email: string;
   username?: string;
+  address?: string;
+  isVerified?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 interface AuthContextType {
@@ -25,28 +29,14 @@ interface AuthContextType {
   requestPasswordReset: (email: string) => Promise<boolean>;
   resetPassword: (token: string, newPassword: string) => Promise<boolean>;
   googleLogin: () => Promise<boolean>;
+  updateProfile: (username: string, address: string) => Promise<boolean>;
+  deleteAccount: () => Promise<boolean>;
   setUser: (user: User | null) => void;
   setToken: (token: string | null) => void;
   setIsEmailVerified: (verified: boolean) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
-// Cookie utility functions
-const setCookie = (name: string, value: string, days: number = 7) => {
-  const expires = new Date();
-  expires.setTime(expires.getTime() + days * 24 * 60 * 60 * 1000);
-  Cookies.set(name, value, { expires: expires, path: '/' });
-};
-
-const getCookie = (name: string): string | null => {
-  console.log("Getting cookie:", name);
-  return Cookies.get(name) || null;
-};
-
-const deleteCookie = (name: string) => {
-  Cookies.remove(name, { path: '/' });
-};
 
 interface AuthProviderProps {
   children: ReactNode;
@@ -75,8 +65,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const fetchUserProfile = async (token: string): Promise<User | null> => {
     try {
       console.log('👤 Fetching user profile with token:', token.substring(0, 20) + '...');
-      console.log("API_BASE_URL is:",API_BASE_URL);
-      const response = await axios.get(`${API_BASE_URL}/me`, {
+      console.log("API_BASE_URL is:",AUTH_BASE_URL);
+      const response = await axios.get(`${AUTH_BASE_URL}/me`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -91,7 +81,7 @@ console.log("response of auth context is:",response);
         throw new Error(`Failed to fetch user profile: ${response.status}`);
       }
 
-      const data = await response.data;
+      const data = response.data;
       console.log('👤 User profile data:', data);
       //📡 Raw response: {"success":true,"data":{"user":{"id":3,"username":"Vaibhaw Anand","email":"vaibhaw@coretechies.com","isVerified":true,"createdAt":"2025-08-29T09:58:08.265Z","updatedAt":"2025-08-29T09:58:08.265Z","chi
       return {
@@ -177,17 +167,26 @@ console.log("response of auth context is:",response);
     initializeAuth();
   }, []);
 
-  // Save to cookies whenever user or token changes
+  // Save to cookies whenever user or token changes (but only after initialization)
   useEffect(() => {
+    // Don't delete cookies during initialization loading
+    if (isLoading) return;
+    
     if (user && token) {
       setCookie('auth_token', token, 7);
       setCookie('user_data', JSON.stringify(user), 7);
-      // No need to store email verification - if we have a token, email is verified
+      console.log('✅ Auth cookies saved successfully');
     } else {
-      deleteCookie('auth_token');
-      deleteCookie('user_data');
+      // Only delete cookies if we're explicitly logging out or auth failed
+      // Don't delete during normal initialization
+      const shouldDeleteCookies = !isLoading && (user === null || token === null);
+      if (shouldDeleteCookies) {
+        console.log('🗑️ Clearing auth cookies due to logout/auth failure');
+        deleteCookie('auth_token');
+        deleteCookie('user_data');
+      }
     }
-  }, [user, token]);
+  }, [user, token, isLoading]);
 
   const login = async (email: string, password: string, rememberMe: boolean = false): Promise<boolean> => {
     try {
@@ -195,17 +194,18 @@ console.log("response of auth context is:",response);
       
       console.log('🔐 Attempting login for:', email);
       
-      const response = await axios(`${API_BASE_URL}/login`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        data: JSON.stringify({ email, password }),
-      });
+      const response = await axios.post(`${AUTH_BASE_URL}/login`, 
+        { email, password },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      );
 
       console.log('📡 Login response status:', response.status);
       
-      const data = await response.data;
+      const data = response.data;
       console.log('📡 Login response data:', data);
       console.log('📡 Login response data keys:', Object.keys(data));
       console.log('📡 Looking for token in:', { 
@@ -272,29 +272,8 @@ console.log("response of auth context is:",response);
         console.error('❌ No token in login response');
         console.log('🔧 Full response data for debugging:', JSON.stringify(data, null, 2));
         
-        // Temporary fallback: if login is successful but no token, create a mock session
-        if (response.data) {
-          console.log('⚠️ Login successful but no token, creating temporary session...');
-          const mockToken = 'temp_session_' + Date.now();
-          const userData = {
-            id: 'temp_user',
-            name: email.split('@')[0],
-            email: email,
-            username: email.split('@')[0]
-          };
-          
-          setToken(mockToken);
-          setUser(userData);
-          setIsEmailVerified(true);
-          
-          if (rememberMe) {
-            setCookie('remembered_username', email, 30);
-          } else {
-            deleteCookie('remembered_username');
-          }
-          
-          return true;
-        }
+        // No valid token received from backend
+        console.error('❌ Login failed: No valid authentication token received from server');
         
         return false;
       }
@@ -314,15 +293,16 @@ console.log("response of auth context is:",response);
         return { success: false, message: 'You must accept the terms and conditions' };
       }
       
-      const response = await axios(`${API_BASE_URL}/register`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        data: JSON.stringify({ username, email, password }),
-      });
+      const response = await axios.post(`${AUTH_BASE_URL}/register`, 
+        { username, email, password },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      );
 
-      const data = await response.data;
+      const data = response.data;
 
       if (!response.data) {
         return { success: false, message: data.message || 'Registration failed. Please try again.' };
@@ -350,18 +330,118 @@ console.log("response of auth context is:",response);
     console.log('✅ User logged out');
   };
 
+  const updateProfile = async (username: string, address: string): Promise<boolean> => {
+    try {
+      setIsLoading(true);
+      console.log('🔄 Updating user profile...');
+
+      if (!token) {
+        console.error('❌ No authentication token available');
+        return false;
+      }
+
+      const response = await axios.patch(`${AUTH_BASE_URL}/profile`, {
+        username,
+        address
+      }, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+      });
+
+      console.log('📡 Profile update response status:', response.status);
+      const data = response.data;
+
+      if (data.success && data.data?.user) {
+        console.log('✅ Profile updated successfully');
+        
+        // Update user state with new profile data
+        const updatedUser = {
+          ...user,
+          ...data.data.user
+        } as User;
+        
+        setUser(updatedUser);
+        
+        // Update cookie with new user data
+        setCookie('user_data', JSON.stringify(updatedUser), 7);
+        
+        return true;
+      } else {
+        console.error('❌ Profile update failed:', data.msg || 'Unknown error');
+        return false;
+      }
+    } catch (error: any) {
+      console.error('❌ Error updating profile:', error);
+      
+      if (error.response?.status === 401) {
+        console.log('🔓 Authentication failed during profile update');
+        logout();
+      }
+      
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const deleteAccount = async (): Promise<boolean> => {
+    try {
+      setIsLoading(true);
+      console.log('🗑️ Deleting user account...');
+
+      if (!token) {
+        console.error('❌ No authentication token available');
+        return false;
+      }
+
+      const response = await axios.delete(`${AUTH_BASE_URL}/account`, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+      });
+
+      console.log('📡 Account deletion response status:', response.status);
+      const data = response.data;
+
+      if (data.success) {
+        console.log('✅ Account deleted successfully');
+        
+        // Logout user after successful account deletion
+        logout();
+        
+        return true;
+      } else {
+        console.error('❌ Account deletion failed:', data.msg || 'Unknown error');
+        return false;
+      }
+    } catch (error: any) {
+      console.error('❌ Error deleting account:', error);
+      
+      if (error.response?.status === 401) {
+        console.log('🔓 Authentication failed during account deletion');
+        logout();
+      }
+      
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const verifyEmail = async (verificationToken: string): Promise<boolean> => {
     try {
       setIsLoading(true);
       
-      const response = await axios(`${API_BASE_URL}/verify/${verificationToken}`, {
-        method: 'GET',
+      const response = await axios.get(`${AUTH_BASE_URL}/verify/${verificationToken}`, {
         headers: {
           'Content-Type': 'application/json',
         },
       });
 
-      const data = await response.data;
+      const data = response.data;
 
       if (!response.data) {
         console.error('Email verification failed:', data.message || 'Unknown error');
@@ -382,15 +462,16 @@ console.log("response of auth context is:",response);
     try {
       setIsLoading(true);
       
-      const response = await axios(`${API_BASE_URL}/forgot-password`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        data: JSON.stringify({ email }),
-      });
+      const response = await axios.post(`${AUTH_BASE_URL}/forgot-password`, 
+        { email },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      );
 
-          const data = await response.data;
+          const data = response.data;
 
       if (!response.data) {
         console.error('Password reset request failed:', data.message || 'Unknown error');
@@ -410,15 +491,16 @@ console.log("response of auth context is:",response);
     try {
       setIsLoading(true);
       
-      const response = await axios(`${API_BASE_URL}/reset-password/${resetToken}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        data: JSON.stringify({ password: newPassword }),
-      });
+      const response = await axios.post(`${AUTH_BASE_URL}/reset-password/${resetToken}`, 
+        { password: newPassword },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      );
 
-      const data = await response.data;
+      const data = response.data;
 
             if (!response.data) {
         console.error('Password reset failed:', data.message || 'Unknown error');
@@ -439,7 +521,7 @@ console.log("response of auth context is:",response);
       console.log('🔐 Initiating Google OAuth login...');
       
       // Redirect to Google OAuth endpoint
-      const googleAuthUrl = `${API_BASE_URL}/google`;
+      const googleAuthUrl = `${AUTH_BASE_URL}/google`;
       console.log('🔗 Redirecting to:', googleAuthUrl);
       
       window.location.href = googleAuthUrl;
@@ -466,6 +548,8 @@ console.log("response of auth context is:",response);
     requestPasswordReset,
     resetPassword,
     googleLogin,
+    updateProfile,
+    deleteAccount,
     setUser,
     setToken,
     setIsEmailVerified

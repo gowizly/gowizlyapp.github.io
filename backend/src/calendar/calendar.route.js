@@ -2,6 +2,7 @@ import express from "express";
 import {
   getAllEvents,
   getMonthlyCalendar,
+  getCalendarRange,
   getEventsByDateRange,
   getUpcomingEvents,
   createEvent,
@@ -22,6 +23,7 @@ router.use(authenticateToken);
 
 // Calendar view routes
 router.get('/monthly', getMonthlyCalendar); // GET /api/calendar/monthly?year=2024&month=3&childId=1
+router.get('/range', getCalendarRange); // GET /api/calendar/range?startYear=2024&startMonth=3&endYear=2024&endMonth=5&childId=1
 router.get('/date-range', getEventsByDateRange); // GET /api/calendar/date-range?startDate=2024-03-01&endDate=2024-03-31&childId=1
 router.get('/upcoming', getUpcomingEvents); // GET /api/calendar/upcoming?days=7&childId=1
 router.get('/statistics', getCalendarStatistics); // GET /api/calendar/statistics?childId=1

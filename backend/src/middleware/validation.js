@@ -85,11 +85,18 @@ export const validateUserProfileUpdate = [
     .withMessage("Username can only contain letters, numbers, underscores, and hyphens"),
   
   body("email")
+    .custom((value) => {
+      if (value !== undefined) {
+        throw new Error("Email cannot be changed. Contact support if you need to update your email address.");
+      }
+      return true;
+    }),
+  
+  body("address")
     .optional()
     .trim()
-    .isEmail()
-    .normalizeEmail()
-    .withMessage("Please provide a valid email address"),
+    .isLength({ max: 500 })
+    .withMessage("Address cannot exceed 500 characters"),
   
   validateRequest
 ];
@@ -206,14 +213,6 @@ export const validateChildUpdate = [
       }
       return true;
     }),
-  
-  // COMMENTED OUT - Google Classroom Integration
-  // body("googleClassroomEmail")
-  //   .optional()
-  //   .isEmail()
-  //   .normalizeEmail()
-  //   .withMessage("Google Classroom email must be a valid email address"),
-  
   validateRequest
 ];
 
@@ -363,6 +362,63 @@ export const validateEventUpdate = [
     .optional()
     .isInt({ min: 0, max: 43200 }) // Max 30 days
     .withMessage("Reminder must be between 0 and 43200 minutes"),
+  
+  validateRequest
+];
+
+// Assistant email analysis validation
+export const validateEmailAnalysis = [
+  body("emailContent")
+    .trim()
+    .isLength({ min: 10, max: 10000 })
+    .withMessage("Email content must be between 10 and 10000 characters"),
+  
+  body("childId")
+    .optional()
+    .isInt({ min: 1 })
+    .withMessage("Child ID must be a positive integer"),
+  
+  validateRequest
+];
+
+// Assistant event creation validation
+export const validateAssistantEventCreation = [
+  body("eventData")
+    .isObject()
+    .withMessage("Event data must be an object"),
+  
+  body("eventData.title")
+    .trim()
+    .isLength({ min: 1, max: 200 })
+    .withMessage("Event title must be between 1 and 200 characters"),
+  
+  body("eventData.startDate")
+    .isISO8601()
+    .withMessage("Start date must be a valid date"),
+  
+  body("eventData.endDate")
+    .optional()
+    .isISO8601()
+    .withMessage("End date must be a valid date"),
+  
+  body("eventData.type")
+    .optional()
+    .isIn([
+      "SCHOOL_EVENT", "ASSIGNMENT_DUE", "EXAM", "PARENT_MEETING", 
+      "EXTRACURRICULAR", "APPOINTMENT", "BIRTHDAY", "HOLIDAY", 
+      "REMINDER", "OTHER"
+    ])
+    .withMessage("Please select a valid event type"),
+  
+  body("eventData.priority")
+    .optional()
+    .isIn(["LOW", "MEDIUM", "HIGH", "URGENT"])
+    .withMessage("Please select a valid priority level"),
+  
+  body("eventData.childId")
+    .optional()
+    .isInt({ min: 1 })
+    .withMessage("Child ID must be a positive integer"),
   
   validateRequest
 ];

@@ -13,6 +13,7 @@ import "./config/passport.js";
 import authRoutes from "./auth/auth.route.js";
 import childRoutes from "./child/child.route.js";
 import calendarRoutes from "./calendar/calendar.route.js";
+import assistantRoutes from "./assisstant/assistant.route.js";
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler.js";
 import { requestLogger, logInfo } from "./utils/logger.js";
 
@@ -66,6 +67,7 @@ app.get('/api/health', (req, res) => {
 app.use("/api/auth", authRoutes);
 app.use("/api/children", childRoutes);
 app.use("/api/calendar", calendarRoutes);
+app.use("/api/assistant", assistantRoutes);
 
 // Serve uploaded files
 app.use('/uploads', express.static('uploads'));

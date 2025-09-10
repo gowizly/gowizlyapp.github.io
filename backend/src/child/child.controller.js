@@ -1,5 +1,6 @@
 import prisma from "../config/db.js";
 import { logInfo, logError, logWarn, logDebug } from "../utils/logger.js";
+import calendarService from "../services/calendar.service.js";
 
 // Get all children for the authenticated user
 export const getChildren = async (req, res) => {
@@ -146,7 +147,7 @@ export const updateChild = async (req, res) => {
     const updateData = {};
 
     // Only include fields that are provided
-    const allowedFields = ['name', 'gradeLevel', 'schoolName', 'birthDate'];
+    const allowedFields = ['name', 'gradeLevel', 'schoolName', 'birthDate', 'googleClassroomEmail'];
     
     allowedFields.forEach(field => {
       if (req.body[field] !== undefined) {
@@ -292,3 +293,159 @@ export const uploadChildPhoto = async (req, res) => {
   }
 };
 
+// Get all events for a specific child
+export const getEventsByChildId = async (req, res) => {
+  try {
+    const { childId } = req.params;
+    const { limit = 50, offset = 0, type, startDate, endDate } = req.query;
+    
+    logInfo('Get events by child ID request', { 
+      userId: req.user.id, 
+      childId,
+      limit: parseInt(limit),
+      offset: parseInt(offset),
+      type,
+      startDate,
+      endDate
+    });
+
+    // Validate childId
+    const childIdInt = parseInt(childId);
+    if (isNaN(childIdInt)) {
+      logWarn('Invalid childId in get events by child request', { userId: req.user.id, childId });
+      return res.status(400).json({
+        success: false,
+        msg: "Invalid child ID"
+      });
+    }
+
+    // Verify child belongs to user
+    const child = await prisma.child.findFirst({
+      where: {
+        id: childIdInt,
+        parentId: req.user.id
+      }
+    });
+
+    if (!child) {
+      logWarn('Child not found or unauthorized in get events by child', { userId: req.user.id, childId: childIdInt });
+      return res.status(404).json({
+        success: false,
+        msg: "Child not found"
+      });
+    }
+
+    // Build filter conditions
+    const whereConditions = {
+      parentId: req.user.id,
+      eventChildren: {
+        some: {
+          childId: childIdInt
+        }
+      }
+    };
+
+    // Filter by event type if specified
+    if (type) {
+      whereConditions.type = type;
+    }
+
+    // Filter by date range if specified
+    if (startDate && endDate) {
+      whereConditions.OR = [
+        {
+          startDate: {
+            gte: new Date(startDate),
+            lte: new Date(endDate)
+          }
+        },
+        {
+          AND: [
+            { startDate: { lte: new Date(endDate) } },
+            {
+              OR: [
+                { endDate: { gte: new Date(startDate) } },
+                { endDate: null }
+              ]
+            }
+          ]
+        }
+      ];
+    } else if (startDate) {
+      whereConditions.startDate = {
+        gte: new Date(startDate)
+      };
+    } else if (endDate) {
+      whereConditions.startDate = {
+        lte: new Date(endDate)
+      };
+    }
+
+    // Get events with pagination
+    const events = await prisma.event.findMany({
+      where: whereConditions,
+      include: {
+        eventChildren: {
+          include: {
+            child: {
+              select: {
+                id: true,
+                name: true
+              }
+            }
+          }
+        }
+      },
+      orderBy: { startDate: 'asc' },
+      take: parseInt(limit),
+      skip: parseInt(offset)
+    });
+
+    // Get total count for pagination
+    const totalEvents = await prisma.event.count({
+      where: whereConditions
+    });
+
+    // Format events with time information
+    const eventsWithTime = events.map(event => calendarService.formatEventWithTime(event));
+
+    logInfo('Retrieved events by child ID successfully', { 
+      userId: req.user.id, 
+      childId: childIdInt,
+      childName: child.name,
+      eventsCount: events.length, 
+      totalEvents,
+      type,
+      dateRange: startDate && endDate ? `${startDate} to ${endDate}` : null
+    });
+
+    res.json({
+      success: true,
+      msg: `Events retrieved successfully for ${child.name}`,
+      data: {
+        child: {
+          id: child.id,
+          name: child.name
+        },
+        events: eventsWithTime,
+        pagination: {
+          total: totalEvents,
+          limit: parseInt(limit),
+          offset: parseInt(offset),
+          hasMore: parseInt(offset) + events.length < totalEvents
+        },
+        filters: {
+          type: type || null,
+          startDate: startDate || null,
+          endDate: endDate || null
+        }
+      }
+    });
+  } catch (error) {
+    logError("Get events by child ID error", error, { userId: req.user?.id, childId: req.params?.childId });
+    res.status(500).json({
+      success: false,
+      msg: "Internal server error"
+    });
+  }
+};

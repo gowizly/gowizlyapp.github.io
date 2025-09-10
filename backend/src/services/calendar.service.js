@@ -6,29 +6,17 @@ class CalendarService {
     const startDate = new Date(year, month - 1, 1); // month is 1-based
     const endDate = new Date(year, month, 0, 23, 59, 59, 999); // Last day of month
 
+    console.log(`[CalendarService] Monthly query for user ${userId}, ${year}-${month}, childId: ${childId}`);
+    console.log(`[CalendarService] Date range: ${startDate.toISOString()} to ${endDate.toISOString()}`);
+
+    // For monthly view, only get events that start in the requested month
+    // This prevents showing events from other months
     const whereClause = {
       parentId: userId,
-      OR: [
-        {
-          // Events that start in this month
-          startDate: {
-            gte: startDate,
-            lte: endDate
-          }
-        },
-        {
-          // Multi-day events that span into this month
-          AND: [
-            { startDate: { lte: endDate } },
-            { 
-              OR: [
-                { endDate: { gte: startDate } },
-                { endDate: null } // All-day events without end date
-              ]
-            }
-          ]
-        }
-      ]
+      startDate: {
+        gte: startDate,
+        lte: endDate
+      }
     };
 
     // Add child filter if specified
@@ -38,6 +26,9 @@ class CalendarService {
           childId: parseInt(childId)
         }
       };
+      console.log(`[CalendarService] Added child filter for childId: ${childId}`);
+    } else {
+      console.log(`[CalendarService] No child filter - showing all user events`);
     }
 
     const events = await prisma.event.findMany({
@@ -60,6 +51,19 @@ class CalendarService {
       ]
     });
 
+    console.log(`[CalendarService] Found ${events.length} events for user ${userId}, ${year}-${month}, childId: ${childId}`);
+    
+    // Debug: Log first few events
+    if (events.length > 0) {
+      const sampleEvents = events.slice(0, 3).map(e => ({
+        id: e.id,
+        title: e.title,
+        startDate: e.startDate,
+        children: e.eventChildren.map(ec => ({ id: ec.child.id, name: ec.child.name }))
+      }));
+      console.log(`[CalendarService] Sample events:`, JSON.stringify(sampleEvents, null, 2));
+    }
+
     return events;
   }
 
@@ -77,7 +81,7 @@ class CalendarService {
         {
           AND: [
             { startDate: { lte: new Date(endDate) } },
-            { 
+            {
               OR: [
                 { endDate: { gte: new Date(startDate) } },
                 { endDate: null }
@@ -261,7 +265,7 @@ class CalendarService {
     if (firstDayOfWeek > 0) {
       const prevMonth = new Date(year, month - 2, 0);
       const daysFromPrevMonth = prevMonth.getDate() - firstDayOfWeek + 1;
-      
+
       for (let i = daysFromPrevMonth; i <= prevMonth.getDate(); i++) {
         calendar.push({
           date: new Date(year, month - 2, i),
@@ -315,12 +319,13 @@ class CalendarService {
   // Format event for calendar display - updated for new schema
   formatEventForCalendar(event) {
     const colors = this.getEventTypeColors();
-    
+
     // Extract children from eventChildren relationship
     const children = event.eventChildren ? event.eventChildren.map(ec => ({
       id: ec.child.id,
       name: ec.child.name
     })) : [];
+
 
     return {
       id: event.id,
@@ -358,7 +363,7 @@ class CalendarService {
         {
           AND: [
             { startDate: { lte: new Date(endDate || startDate) } },
-            { 
+            {
               OR: [
                 { endDate: { gte: new Date(startDate) } },
                 { endDate: null }
@@ -459,7 +464,7 @@ class CalendarService {
         {
           AND: [
             { startDate: { lte: new Date(endDate) } },
-            { 
+            {
               OR: [
                 { endDate: { gte: new Date(startDate) } },
                 { endDate: null }
@@ -490,6 +495,45 @@ class CalendarService {
       ]
     });
   }
+
+  // Helper function to extract time from datetime
+  extractTimeFromDate(dateTime) {
+    if (!dateTime) return null;
+    const date = new Date(dateTime);
+    return date.toTimeString().slice(0, 8); // Returns HH:MM:SS format
+  };
+
+  // Helper function to format event with time information and children
+  formatEventWithTime(event) {
+    // Use already extracted children array or extract from eventChildren if available
+    const children = event.children || (event.eventChildren ? event.eventChildren.map(ec => ({
+      id: ec.child.id,
+      name: ec.child.name
+    })) : []);
+
+    return {
+      id: event.id,
+      title: event.title,
+      description: event.description,
+      startDate: event.startDate,
+      endDate: event.endDate,
+      isAllDay: event.isAllDay,
+      type: event.type,
+      priority: event.priority,
+      color: event.color,
+      hasReminder: event.hasReminder,
+      reminderMinutes: event.reminderMinutes,
+      parentId: event.parentId,
+      createdAt: event.createdAt,
+      updatedAt: event.updatedAt,
+      children, // Array of children objects
+      startTime: this.extractTimeFromDate(event.startDate),
+      endTime: this.extractTimeFromDate(event.endDate),
+      startDateOnly: event.startDate ? new Date(event.startDate).toISOString().split('T')[0] : null,
+      endDateOnly: event.endDate ? new Date(event.endDate).toISOString().split('T')[0] : null,
+      eventChildren: undefined
+    };
+  };
 }
 
 export default new CalendarService();

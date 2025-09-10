@@ -18,6 +18,8 @@ interface CalendarViewProps {
   onChildChange: (child: LocalChild | null) => void;
   children: LocalChild[];
   events: Event[];
+  eventsByDate?: { [date: string]: Event[] };
+  isLoadingEvents?: boolean;
   onAddEvent: () => void;
   onEventClick?: (event: Event) => void;
 }
@@ -29,6 +31,8 @@ const CalendarView: React.FC<CalendarViewProps> = ({
   onChildChange,
   children,
   events,
+  eventsByDate = {},
+  isLoadingEvents = false,
   onAddEvent,
   onEventClick
 }) => {
@@ -79,28 +83,16 @@ const CalendarView: React.FC<CalendarViewProps> = ({
 
   const getEventsForDate = (date: Date) => {
     const dateStr = date.toISOString().split('T')[0];
-    return events.filter(event => {
-      const eventDate = new Date(event.startDate).toISOString().split('T')[0];
-      const dateMatches = eventDate === dateStr;
-      
-      if (!dateMatches) return false;
-      
-      // If no child is selected, show all events
-      if (!selectedChild) return true;
-      
-      // Show events for the selected child - check if event has this child in the children array
-      if (selectedChild.id && event.children && event.children.some(child => child.id === selectedChild.id)) {
-        return true;
-      }
-      
-      // Legacy support: Show events with matching childId (for older events)
-      if (selectedChild.id && event.childId === selectedChild.id) return true;
-      
-      // Show "My Events" (0) when viewing all children or any specific child
-      if (event.childId === 0) return true;
-      
-      return false;
-    });
+    
+    // Use eventsByDate structure if available, otherwise fallback to filtering events array
+    const dayEvents = eventsByDate[dateStr] || [];
+    
+    // Minimal logging for performance
+    if (dayEvents.length > 0) {
+      console.log(`📅 Found ${dayEvents.length} events for ${dateStr}`);
+    }
+    
+    return dayEvents;
   };
 
   const navigateMonth = (direction: number) => {
@@ -108,6 +100,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({
     newDate.setMonth(selectedDate.getMonth() + direction);
     onDateChange(newDate);
   };
+
 
   const getChildDisplayName = (event: Event): string => {
     // If event has children array (new format), show child names
@@ -128,6 +121,38 @@ const CalendarView: React.FC<CalendarViewProps> = ({
   };
 
   const days = getDaysInMonth(selectedDate);
+
+  // Simple calendar summary
+  const currentMonth = selectedDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  const eventsInCurrentMonth = events.filter(event => {
+    const eventDate = new Date(event.startDate);
+    return eventDate.getMonth() === selectedDate.getMonth() && 
+           eventDate.getFullYear() === selectedDate.getFullYear();
+  });
+  
+  // Enhanced debugging for calendar view
+  console.log(`📅 Calendar View Debug:`);
+  console.log(`   Current Month: ${currentMonth}`);
+  console.log(`   Total Events Loaded: ${events.length}`);
+  console.log(`   Events in Current Month: ${eventsInCurrentMonth.length}`);
+  console.log(`   Selected Child: ${selectedChild?.name || 'All Children'}`);
+  
+  // Show all event dates for debugging
+  if (events.length > 0) {
+    const eventDates = events.map(e => {
+      const date = new Date(e.startDate);
+      return {
+        title: e.title,
+        date: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+        monthYear: date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+      };
+    });
+    console.log(`📅 All Available Events:`, eventDates);
+    
+    if (eventsInCurrentMonth.length === 0) {
+      console.log(`⚠️ No events in ${currentMonth}. Events are in other months.`);
+    }
+  }
 
   return (
     <div className="p-6">
@@ -152,6 +177,17 @@ const CalendarView: React.FC<CalendarViewProps> = ({
             >
               <ChevronRight className="w-5 h-5" />
             </button>
+            {isLoadingEvents && (
+              <div className="flex items-center space-x-2 text-blue-600">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                <span className="text-sm">Loading events...</span>
+              </div>
+            )}
+            {!isLoadingEvents && eventsInCurrentMonth.length > 0 && (
+              <div className="px-3 py-1 bg-green-100 text-green-700 rounded-lg text-sm font-medium">
+                {eventsInCurrentMonth.length} events this month
+              </div>
+            )}
           </div>
         </div>
         
@@ -245,6 +281,46 @@ const CalendarView: React.FC<CalendarViewProps> = ({
           );
         })}
       </div>
+
+      {/* Debug Panel - Show event locations when no events in current month */}
+      {events.length > 0 && eventsInCurrentMonth.length === 0 && (
+        <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+          <h3 className="text-lg font-semibold text-yellow-800 mb-3">
+            📅 Events Available ({events.length} total)
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            {events.slice(0, 8).map((event, index) => {
+              const eventDate = new Date(event.startDate);
+              const monthYear = eventDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+              return (
+                <div
+                  key={index}
+                  className="bg-white p-3 rounded-lg border border-yellow-300 cursor-pointer hover:bg-yellow-100 transition-colors"
+                  onClick={() => onDateChange(eventDate)}
+                  title={`Click to navigate to ${monthYear}`}
+                >
+                  <div className="font-medium text-gray-800 truncate">{event.title}</div>
+                  <div className="text-sm text-gray-600">
+                    {eventDate.toLocaleDateString('en-US', { 
+                      month: 'short', 
+                      day: 'numeric', 
+                      year: 'numeric' 
+                    })}
+                  </div>
+                  <div className="text-xs text-blue-600 mt-1">
+                    Click to view in {monthYear}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          {events.length > 8 && (
+            <div className="mt-3 text-sm text-gray-600">
+              ... and {events.length - 8} more events
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Event Type Legend */}
       <EventTypeLegend />
