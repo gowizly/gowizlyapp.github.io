@@ -2,9 +2,9 @@ import axios from 'axios';
 import { getCookie } from '../utils/cookies';
 import { isValidToken, handleAuthFailure } from '../utils/authUtils';
 import { Event } from './eventApi';
+import { API_BASE_URL } from '../config/environment';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
-const CALENDAR_BASE_URL = `${API_BASE_URL}/calendar`;
+const CALENDAR_BASE_URL = `${API_BASE_URL}/api/calendar`;
 
 // Types for the monthly calendar API response
 export interface MonthlyCalendarResponse {
