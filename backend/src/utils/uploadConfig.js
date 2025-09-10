@@ -50,6 +50,17 @@ export const createChildPhotoUpload = () => {
   });
 };
 
+// Create multer upload middleware for assistant photo analysis (memory storage)
+export const createAssistantPhotoUpload = () => {
+  return multer({
+    storage: multer.memoryStorage(), // Store in memory instead of disk
+    fileFilter: imageFileFilter,
+    limits: {
+      fileSize: 10 * 1024 * 1024 // 10MB limit for analysis
+    }
+  });
+};
+
 // Multer error handler middleware
 export const handleMulterError = (error, req, res, next) => {
   if (error instanceof multer.MulterError) {

@@ -2,46 +2,6 @@ import prisma from "../config/db.js";
 import calendarService from "../services/calendar.service.js";
 import { logInfo, logError, logWarn, logDebug } from "../utils/logger.js";
 
-// Helper function to extract time from datetime
-const extractTimeFromDate = (dateTime) => {
-  if (!dateTime) return null;
-  const date = new Date(dateTime);
-  return date.toTimeString().slice(0, 8); // Returns HH:MM:SS format
-};
-
-// Helper function to format event with time information and children
-const formatEventWithTime = (event) => {
-  // Extract children from eventChildren relationship
-  const children = event.eventChildren ? event.eventChildren.map(ec => ({
-    id: ec.child.id,
-    name: ec.child.name
-  })) : [];
-  
-  return {
-    id: event.id,
-    title: event.title,
-    description: event.description,
-    startDate: event.startDate,
-    endDate: event.endDate,
-    isAllDay: event.isAllDay,
-    type: event.type,
-    priority: event.priority,
-    color: event.color,
-    hasReminder: event.hasReminder,
-    reminderMinutes: event.reminderMinutes,
-    parentId: event.parentId,
-    createdAt: event.createdAt,
-    updatedAt: event.updatedAt,
-    children, // Array of children objects
-    startTime: extractTimeFromDate(event.startDate),
-    endTime: extractTimeFromDate(event.endDate),
-    startDateOnly: event.startDate ? new Date(event.startDate).toISOString().split('T')[0] : null,
-    endDateOnly: event.endDate ? new Date(event.endDate).toISOString().split('T')[0] : null,
-    // Remove eventChildren from the response to keep it clean
-    eventChildren: undefined
-  };
-};
-
 // Get monthly calendar view with events
 export const getMonthlyCalendar = async (req, res) => {
   try {
@@ -99,31 +59,81 @@ export const getMonthlyCalendar = async (req, res) => {
       childId
     );
 
-    // Generate calendar grid
-    const calendarGrid = calendarService.generateCalendarGrid(targetYear, targetMonth);
-
     // Format events for calendar display with time information
-    const formattedEvents = events.map(event => {
-      const calendarEvent = calendarService.formatEventForCalendar(event);
-      return formatEventWithTime(calendarEvent);
-    });
+    const formattedEvents = events
+      .map(event => {
+        const calendarEvent = calendarService.formatEventForCalendar(event);
+        return calendarService.formatEventWithTime(calendarEvent);
+      })
+      .filter(event => {
+        // Double-check: only include events that actually start in the requested month
+        if (event.startDateOnly) {
+          const [eventYear, eventMonth] = event.startDateOnly.split('-').map(Number);
+          const isCorrectMonth = eventYear === targetYear && eventMonth === targetMonth;
+          
+          if (!isCorrectMonth) {
+            logWarn('Filtering out event from wrong month', {
+              userId: req.user.id,
+              eventId: event.id,
+              eventTitle: event.title,
+              eventDate: event.startDateOnly,
+              requestedMonth: `${targetYear}-${String(targetMonth).padStart(2, '0')}`
+            });
+          }
+          
+          return isCorrectMonth;
+        }
+        return false;
+      });
 
     // Group events by date for easier frontend consumption
     const eventsByDate = {};
     formattedEvents.forEach(event => {
-      const dateKey = new Date(event.startDate).toISOString().split('T')[0];
-      if (!eventsByDate[dateKey]) {
-        eventsByDate[dateKey] = [];
+      // Use the already calculated startDateOnly field to avoid timezone issues
+      const dateKey = event.startDateOnly;
+      if (dateKey) {
+        if (!eventsByDate[dateKey]) {
+          eventsByDate[dateKey] = [];
+        }
+        eventsByDate[dateKey].push(event);
       }
-      eventsByDate[dateKey].push(event);
     });
+
+    // Debug: Log some sample events to verify filtering
+    logDebug('Event filtering results', {
+      userId: req.user.id,
+      targetYear,
+      targetMonth,
+      childId,
+      rawEventCount: events.length,
+      filteredEventCount: formattedEvents.length,
+      requestedMonth: `${targetYear}-${String(targetMonth).padStart(2, '0')}`
+    });
+
+    if (formattedEvents.length > 0) {
+      const sampleEvents = formattedEvents.slice(0, 3).map(e => ({
+        id: e.id,
+        title: e.title,
+        startDate: e.startDate,
+        startDateOnly: e.startDateOnly,
+        children: e.children.map(c => ({ id: c.id, name: c.name }))
+      }));
+      logDebug('Sample filtered events', { 
+        userId: req.user.id, 
+        targetYear, 
+        targetMonth, 
+        childId,
+        sampleEvents 
+      });
+    }
 
     logInfo('Monthly calendar data retrieved successfully', { 
       userId: req.user.id, 
       year: targetYear, 
       month: targetMonth, 
       eventCount: formattedEvents.length,
-      childId 
+      childId,
+      dateRangeUsed: `${targetYear}-${String(targetMonth).padStart(2, '0')}-01 to ${targetYear}-${String(targetMonth).padStart(2, '0')}-${new Date(targetYear, targetMonth, 0).getDate()}`
     });
 
     res.json({
@@ -131,7 +141,6 @@ export const getMonthlyCalendar = async (req, res) => {
       data: {
         year: targetYear,
         month: targetMonth,
-        calendarGrid,
         events: formattedEvents,
         eventsByDate,
         totalEvents: formattedEvents.length,
@@ -140,6 +149,129 @@ export const getMonthlyCalendar = async (req, res) => {
     });
   } catch (error) {
     logError("Get monthly calendar error", error, { userId: req.user.id, year, month, childId });
+    res.status(500).json({
+      success: false,
+      msg: "Internal server error"
+    });
+  }
+};
+
+// Get calendar range for scrolling (multiple months at once)
+export const getCalendarRange = async (req, res) => {
+  try {
+    const { startYear, startMonth, endYear, endMonth, childId } = req.query;
+    
+    logInfo('Calendar range request', { 
+      userId: req.user.id, 
+      startYear, 
+      startMonth, 
+      endYear, 
+      endMonth, 
+      childId 
+    });
+
+    // Validate parameters
+    if (!startYear || !startMonth || !endYear || !endMonth) {
+      return res.status(400).json({
+        success: false,
+        msg: "Start year, start month, end year, and end month are required"
+      });
+    }
+
+    // Verify child belongs to user if childId is provided
+    if (childId) {
+      const child = await prisma.child.findFirst({
+        where: {
+          id: parseInt(childId),
+          parentId: req.user.id
+        }
+      });
+
+      if (!child) {
+        return res.status(404).json({
+          success: false,
+          msg: "Child not found"
+        });
+      }
+    }
+
+    // Calculate date range
+    const startDate = new Date(parseInt(startYear), parseInt(startMonth) - 1, 1);
+    const endDate = new Date(parseInt(endYear), parseInt(endMonth), 0, 23, 59, 59, 999);
+
+    // Get events for the date range
+    const events = await calendarService.getEventsByDateRange(
+      req.user.id,
+      startDate,
+      endDate,
+      childId
+    );
+
+    // Format events for calendar display with time information
+    const formattedEvents = events.map(event => {
+      const calendarEvent = calendarService.formatEventForCalendar(event);
+      return calendarService.formatEventWithTime(calendarEvent);
+    });
+
+    // Group events by month for easier frontend consumption
+    const eventsByMonth = {};
+    const eventsByDate = {};
+    
+    formattedEvents.forEach(event => {
+      // Use startDateOnly to avoid timezone issues
+      const dateKey = event.startDateOnly;
+      if (dateKey) {
+        // Extract year-month from the date string (YYYY-MM-DD format)
+        const monthKey = dateKey.substring(0, 7); // Gets YYYY-MM
+        
+        // Group by month
+        if (!eventsByMonth[monthKey]) {
+          eventsByMonth[monthKey] = [];
+        }
+        eventsByMonth[monthKey].push(event);
+        
+        // Group by date
+        if (!eventsByDate[dateKey]) {
+          eventsByDate[dateKey] = [];
+        }
+        eventsByDate[dateKey].push(event);
+      }
+    });
+
+    logInfo('Calendar range data retrieved successfully', { 
+      userId: req.user.id, 
+      startYear: parseInt(startYear), 
+      startMonth: parseInt(startMonth),
+      endYear: parseInt(endYear), 
+      endMonth: parseInt(endMonth),
+      eventCount: formattedEvents.length,
+      childId 
+    });
+
+    res.json({
+      success: true,
+      data: {
+        startYear: parseInt(startYear),
+        startMonth: parseInt(startMonth),
+        endYear: parseInt(endYear),
+        endMonth: parseInt(endMonth),
+        events: formattedEvents,
+        eventsByMonth,
+        eventsByDate,
+        totalEvents: formattedEvents.length,
+        filteredChild: childId ? parseInt(childId) : null
+      }
+    });
+
+  } catch (error) {
+    logError("Get calendar range error", error, { 
+      userId: req.user.id, 
+      startYear, 
+      startMonth, 
+      endYear, 
+      endMonth, 
+      childId 
+    });
     res.status(500).json({
       success: false,
       msg: "Internal server error"
@@ -185,7 +317,7 @@ export const getEventsByDateRange = async (req, res) => {
 
     const formattedEvents = events.map(event => {
       const calendarEvent = calendarService.formatEventForCalendar(event);
-      return formatEventWithTime(calendarEvent);
+      return calendarService.formatEventWithTime(calendarEvent);
     });
 
     res.json({
@@ -235,7 +367,7 @@ export const getUpcomingEvents = async (req, res) => {
 
     const formattedEvents = events.map(event => {
       const calendarEvent = calendarService.formatEventForCalendar(event);
-      return formatEventWithTime(calendarEvent);
+      return calendarService.formatEventWithTime(calendarEvent);
     });
 
     res.json({
@@ -336,7 +468,7 @@ export const getAllEvents = async (req, res) => {
     });
 
     // Format events with time information
-    const eventsWithTime = events.map(formatEventWithTime);
+    const eventsWithTime = events.map(event => calendarService.formatEventWithTime(event));
 
     logInfo('Retrieved all events successfully', { 
       userId: req.user.id, 
@@ -512,7 +644,7 @@ export const createEvent = async (req, res) => {
     });
 
     // Format the event directly (no need to use calendarService first since we have all the data)
-    const formattedEvent = formatEventWithTime(event);
+    const formattedEvent = calendarService.formatEventWithTime(event);
 
     logInfo('Event created successfully', { 
       userId: req.user.id, 
@@ -701,7 +833,7 @@ export const updateEvent = async (req, res) => {
       }
     });
 
-    const formattedEvent = formatEventWithTime(updatedEvent);
+    const formattedEvent = calendarService.formatEventWithTime(updatedEvent);
 
     logInfo('Event updated successfully', { 
       userId: req.user.id, 
@@ -754,7 +886,7 @@ export const getEventById = async (req, res) => {
       });
     }
 
-    const formattedEvent = formatEventWithTime(event);
+    const formattedEvent = calendarService.formatEventWithTime(event);
 
     res.json({
       success: true,

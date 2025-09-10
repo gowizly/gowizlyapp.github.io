@@ -1,0 +1,30 @@
+import express from "express";
+import {
+  analyzeEmail,
+  analyzePhoto,
+  getAnalysisHistory
+} from "./assistant.controller.js";
+import { authenticateToken } from "../middleware/auth.js";
+import { authLimiter } from "../middleware/rateLimiter.js";
+import { validateEmailAnalysis } from "../middleware/validation.js";
+import { createAssistantPhotoUpload, handleMulterError } from "../utils/uploadConfig.js";
+
+const router = express.Router();
+
+// All routes require authentication
+router.use(authenticateToken);
+
+// Configure multer for photo uploads
+const upload = createAssistantPhotoUpload();
+
+// Email analysis routes
+router.post('/analyze-email', authLimiter, validateEmailAnalysis, analyzeEmail); 
+
+// Photo analysis routes
+router.post('/analyze-photo', authLimiter, upload.single('photo'), handleMulterError, analyzePhoto); 
+
+// History route
+router.get('/history', getAnalysisHistory); 
+// GET /api/assistant/history?limit=20&offset=0&type=email|photo
+
+export default router;

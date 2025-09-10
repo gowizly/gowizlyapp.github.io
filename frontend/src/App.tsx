@@ -1,10 +1,11 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import './App.css';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ToastProvider } from './contexts/ToastContext';
 import AuthWrapper from './components/AuthWrapper';
 import FamilyCalendarApp from './components/FamilyCalendar';
+import UserManagement from './components/UserManagement';
 import ForgotPassword from './components/ForgotPassword';
 import ResetPassword from './components/ResetPassword';
 import OAuthCallback from './components/OAuthCallback';
@@ -46,6 +47,12 @@ const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   return isAuthenticated ? <Navigate to="/" replace /> : <>{children}</>;
 };
 
+const UserManagementWrapper: React.FC = () => {
+  const navigate = useNavigate();
+  
+  return <UserManagement onBack={() => navigate('/')} />;
+};
+
 function App() {
   return (
     <ErrorBoundary>
@@ -60,6 +67,15 @@ function App() {
                 element={
                   <ProtectedRoute>
                     <FamilyCalendarApp />
+                  </ProtectedRoute>
+                } 
+              />
+              
+              <Route 
+                path="/user-management" 
+                element={
+                  <ProtectedRoute>
+                    <UserManagementWrapper />
                   </ProtectedRoute>
                 } 
               />

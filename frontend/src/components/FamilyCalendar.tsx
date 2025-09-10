@@ -1,10 +1,10 @@
 /// <reference types="react" />
 /// <reference types="react-dom" />
-import React, { useState, useEffect, useCallback } from 'react';
-import { Plus, Camera, Mail, Bot, Settings, Upload } from 'lucide-react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { childApiService } from '../services/childApi';
 import { Event, EventType, EventPriority, eventApiService } from '../services/eventApi';
+import { calendarApiService, MonthlyCalendarResponse } from '../services/calendarApi';
 import { validateChildForCreation, ValidationError as ChildValidationError, VALID_GRADE_LEVELS } from '../utils/childValidation';
 import Header from './Header';
 import Navigation from './Navigation';
@@ -12,7 +12,9 @@ import CalendarView from './CalendarView';
 import ChildManagement from './ChildManagement';
 import AddEventModal from './AddEventModal';
 import EditEventModal from './EditEventModal';
+import AIAssistant from './AIAssistant';
 import { useToast } from '../contexts/ToastContext';
+import { handleAuthFailure } from '../utils/authUtils';
 
 // Update the local Child interface to match the API
 interface LocalChild {
@@ -36,26 +38,11 @@ const FamilyCalendarApp = () => {
   const [showEditEvent, setShowEditEvent] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [showAIAssistant, setShowAIAssistant] = useState(false);
-  const [aiMode, setAiMode] = useState('email');
-  const [emailText, setEmailText] = useState('');
   const [newChild, setNewChild] = useState({ name: '', gradeLevel: '', schoolName: '', birthDate: '' });
   const [childValidationErrors, setChildValidationErrors] = useState<ChildValidationError[]>([]);
-
-  // Handle event creation completion
-  const handleEventCreated = useCallback(async () => {
-    // Reload events from API
-    try {
-      console.log('📅 Loading events from API...');
-      const eventsResponse = await eventApiService.getEvents();
-      if (eventsResponse.success && eventsResponse.data) {
-        console.log('✅ Events loaded successfully:', eventsResponse.data.events);
-        setEvents(eventsResponse.data.events);
-      }
-    } catch (error) {
-      console.error('Error loading events:', error);
-    }
-  }, []);
-
+  const [isLoadingEvents, setIsLoadingEvents] = useState(false);
+  const [eventsByDate, setEventsByDate] = useState<{ [date: string]: Event[] }>({});
+  const isLoadingRef = useRef(false);
   // Handle child creation completion - refresh children data
   const handleChildCreated = useCallback(async () => {
     console.log('👶 Refreshing children list after child creation...');
@@ -69,25 +56,115 @@ const FamilyCalendarApp = () => {
     setShowEditEvent(true);
   }, []);
 
-  // Handle event update completion
-  const handleEventUpdated = useCallback(async () => {
-    // Reload events from API
-    await handleEventCreated(); // Reuse the same logic
-  }, [handleEventCreated]);
-
-  // Handle event deletion completion
-  const handleEventDeleted = useCallback(async () => {
-    // Reload events from API
-    await handleEventCreated(); // Reuse the same logic
-  }, [handleEventCreated]);
-
   // Load children and events data from API
   useEffect(() => {
     if (isAuthenticated) {
       loadChildren();
-      loadEvents();
+      loadEventsForDateRange();
     }
   }, [isAuthenticated]);
+
+  // Load events when selected child or month changes
+  useEffect(() => {
+    if (isAuthenticated) {
+      console.log('🔄 useEffect triggered - Child or month changed:', {
+        child: selectedChild?.name || 'All Children',
+        date: selectedDate.toLocaleDateString(),
+        authenticated: isAuthenticated
+      });
+      loadEventsForDateRange();
+    }
+  }, [selectedChild, selectedDate, isAuthenticated]);
+
+  // Cleanup loading state on unmount
+  useEffect(() => {
+    return () => {
+      isLoadingRef.current = false;
+      setIsLoadingEvents(false);
+    };
+  }, []);
+
+  // Optimized function to load events for current date range and child selection
+  const loadEventsForDateRange = useCallback(async () => {
+    console.log('📅 Loading monthly events...');
+    
+    if (isLoadingRef.current) {
+      console.log('⏳ Event loading already in progress, skipping...');
+      return;
+    }
+    
+    isLoadingRef.current = true;
+    setIsLoadingEvents(true);
+    
+    // Safety timeout to prevent stuck loading state
+    const timeoutId = setTimeout(() => {
+      console.warn('⚠️ Event loading timeout, resetting loading state');
+      isLoadingRef.current = false;
+      setIsLoadingEvents(false);
+    }, 10000); // 10 second timeout
+    
+    try {
+      const currentChild = selectedChild;
+      const currentDate = selectedDate;
+      
+      const year = currentDate.getFullYear();
+      const month = currentDate.getMonth() + 1; // API expects 1-12
+      const childId = currentChild?.id || undefined;
+      
+      console.log(`📅 Loading events for ${year}-${month}${childId ? ` (child: ${currentChild?.name})` : ' (all children)'}`);
+      console.log(`🔄 API Call: GET /api/calendar/monthly?year=${year}&month=${month}${childId ? `&childId=${childId}` : ''}`);
+      
+      const response = await calendarApiService.getMonthlyEvents(year, month, childId);
+      
+      if (response.success && response.data) {
+        console.log('✅ Monthly events loaded successfully');
+        console.log(`📊 Setting ${response.data.totalEvents} events for ${year}-${month}`);
+        console.log(`📅 Events by date:`, Object.keys(response.data.eventsByDate).length, 'dates with events');
+        
+        setEvents(response.data.events);
+        setEventsByDate(response.data.eventsByDate);
+      } else {
+        console.error('❌ Failed to load monthly events:', response.error);
+        const errorMessage = response.error || 'Unknown server error';
+        
+        // Handle authentication failures
+        handleAuthFailure(errorMessage);
+        
+        showError('Failed to Load Events', `Unable to load calendar events: ${errorMessage}`);
+        setEvents([]);
+        setEventsByDate({});
+      }
+    } catch (error) {
+      console.error('Error loading monthly events:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Network error occurred';
+      const childContext = selectedChild ? ` for ${selectedChild.name}` : '';
+      showError('Failed to Load Events', `Unable to connect to the server${childContext}: ${errorMessage}`);
+      setEvents([]);
+      setEventsByDate({});
+    } finally {
+      clearTimeout(timeoutId);
+      isLoadingRef.current = false;
+      setIsLoadingEvents(false);
+    }
+  }, [selectedChild, selectedDate, showError]);
+
+  // Handle event creation completion
+  const handleEventCreated = useCallback(async () => {
+    // Reload events from API (respecting current child selection and date range)
+    await loadEventsForDateRange();
+  }, [loadEventsForDateRange]);
+
+  // Handle event update completion
+  const handleEventUpdated = useCallback(async () => {
+    // Reload events from API
+    await loadEventsForDateRange();
+  }, [loadEventsForDateRange]);
+
+  // Handle event deletion completion
+  const handleEventDeleted = useCallback(async () => {
+    // Reload events from API
+    await loadEventsForDateRange();
+  }, [loadEventsForDateRange]);
 
   const loadChildren = async () => {
     try {
@@ -106,108 +183,30 @@ const FamilyCalendarApp = () => {
         setChildren(localChildren);
       } else {
         console.error('❌ Failed to load children:', response.error);
+        const errorMessage = response.error || 'Unknown server error';
+        
+        // Handle authentication failures
+        handleAuthFailure(errorMessage);
+        
+        // Only show error if it's not a "no children found" case
+        if (!response.error?.includes('No children found')) {
+          showError('Failed to Load Children', `Unable to load children data: ${errorMessage}`);
+        }
         setChildren([]);
       }
     } catch (error) {
       console.error('Error loading children:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Network error occurred';
+      showError('Failed to Load Children', `Unable to connect to the server: ${errorMessage}`);
       setChildren([]);
     }
   };
 
+  // Legacy function for backward compatibility
   const loadEvents = async () => {
-    try {
-      console.log('📅 Loading events from API...');
-      const response = await eventApiService.getEvents();
-      if (response.success && response.data) {
-        console.log('✅ Events loaded successfully:', response.data.events);
-        setEvents(response.data.events);
-      } else {
-        console.error('❌ Failed to load events:', response.error);
-        // Fallback to empty array
-        setEvents([]);
-      }
-    } catch (error) {
-      console.error('Error loading events:', error);
-      setEvents([]);
-    }
+    await loadEventsForDateRange();
   };
 
-  const AIAssistant = () => (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-2xl w-full max-w-2xl max-h-[80vh] overflow-hidden">
-        <div className="bg-purple-600 text-white p-4 flex justify-between items-center">
-          <h3 className="text-lg font-semibold">AI Calendar Assistant</h3>
-          <button
-            onClick={() => setShowAIAssistant(false)}
-            className="text-white hover:bg-purple-700 rounded-lg p-2 transition-colors"
-          >
-            ×
-          </button>
-        </div>
-        
-        <div className="p-6">
-          <div className="flex space-x-4 mb-6">
-            <button
-              onClick={() => setAiMode('email')}
-              className={`px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors ${
-                aiMode === 'email' ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-600'
-              }`}
-            >
-              <Mail className="w-4 h-4" />
-              <span>Schedule Email</span>
-            </button>
-            <button
-              onClick={() => setAiMode('chat')}
-              className={`px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors ${
-                aiMode === 'chat' ? 'bg-purple-100 text-purple-700' : 'bg-gray-100 text-gray-600'
-              }`}
-            >
-              <Bot className="w-4 h-4" />
-              <span>AI Chat</span>
-            </button>
-          </div>
-
-          {aiMode === 'email' && (
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Email Content
-                </label>
-                <textarea
-                  value={emailText}
-                  onChange={(e) => setEmailText(e.target.value)}
-                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 resize-none"
-                  rows={8}
-                  placeholder="Describe the email you want to schedule..."
-                />
-              </div>
-              <button className="w-full bg-purple-600 text-white py-3 rounded-lg hover:bg-purple-700 transition-colors">
-                Generate Email & Schedule
-              </button>
-            </div>
-          )}
-
-          {aiMode === 'chat' && (
-            <div className="space-y-4">
-              <div className="h-96 border border-gray-300 rounded-lg p-4 overflow-y-auto bg-gray-50">
-                <p className="text-gray-500">AI chat coming soon...</p>
-              </div>
-              <div className="flex space-x-2">
-                <input
-                  type="text"
-                  placeholder="Ask AI about your calendar..."
-                  className="flex-1 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-                />
-                <button className="bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 transition-colors">
-                  Send
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
 
   const AddChildModal = () => (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -365,6 +364,8 @@ const FamilyCalendarApp = () => {
           onChildChange={setSelectedChild}
           children={children}
           events={events}
+          eventsByDate={eventsByDate}
+          isLoadingEvents={isLoadingEvents}
           onAddEvent={() => {
             if (children.length === 0) {
               console.log('No children available');
@@ -405,7 +406,12 @@ const FamilyCalendarApp = () => {
           onEventDeleted={handleEventDeleted}
         />
       )}
-      {showAIAssistant && <AIAssistant />}
+      <AIAssistant 
+        isOpen={showAIAssistant} 
+        onClose={() => setShowAIAssistant(false)}
+        children={children}
+        onEventsCreated={handleEventCreated}
+      />
       
     </div>
   );

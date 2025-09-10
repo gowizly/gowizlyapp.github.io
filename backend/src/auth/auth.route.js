@@ -11,7 +11,10 @@ import {
   resendVerification,
   handleOAuthCallback,
   handleGoogleCallback,
-  updateUserProfile
+  updateUserProfile,
+  getUserProfile,
+  patchUserProfile,
+  deleteUserAccount
 } from "./auth.controller.js";
 import passport from "passport";
 import { 
@@ -42,7 +45,12 @@ router.post("/forgot-password", resetPasswordLimiter, validateForgotPassword, fo
 router.get("/reset-password/:token", validateResetToken); // Validate reset token
 router.post("/reset-password/:token", authLimiter, validateResetPassword, resetPassword);
 
-// Protected Routes
+// Protected Routes - User Profile Management
+router.get("/profile", authenticateToken, getUserProfile); // GET /api/auth/profile
+router.patch("/profile", authenticateToken, authLimiter, validateUserProfileUpdate, patchUserProfile); // PATCH /api/auth/profile  
+router.delete("/account", authenticateToken, authLimiter, deleteUserAccount); // DELETE /api/auth/account
+
+// Legacy routes (keep for backward compatibility)
 router.get("/me", authenticateToken, getCurrentUser);
 router.put("/me", authenticateToken, authLimiter, validateUserProfileUpdate, updateUserProfile);
 router.patch("/me", authenticateToken, authLimiter, validateUserProfileUpdate, updateUserProfile);

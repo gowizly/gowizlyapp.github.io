@@ -20,6 +20,7 @@ model User {
   email           String    @unique
   password        String?
   googleId        String?   @unique
+  address         String?   // User's address
   isVerified      Boolean   @default(false)
   resetToken      String?
   resetTokenExpire DateTime?
