@@ -1,6 +1,6 @@
 import React, { useCallback } from 'react';
 import { X } from 'lucide-react';
-import { Event, EventType, EventPriority, eventApiService } from '../services/eventApi';
+import { EventType, EventPriority, eventApiService } from '../services/eventApi';
 import { validateEventForCreation, ValidationError } from '../utils/eventValidation';
 import { useToast } from '../contexts/ToastContext';
 

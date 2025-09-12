@@ -448,48 +448,44 @@ export const logout = async (req, res) => {
 // Get current user profile
 export const getCurrentUser = async (req, res) => {
   try {
+    logInfo('Get current user request', { userId: req.user.id });
+
     const user = await prisma.user.findUnique({
       where: { id: req.user.id },
       select: {
         id: true,
         username: true,
         email: true,
+        address: true,
         isVerified: true,
         createdAt: true,
-        updatedAt: true,
-        children: {
-          select: {
-            id: true,
-            name: true,
-            gradeLevel: true,
-            schoolName: true,
-            birthDate: true,
-            profilePhoto: true,
-            createdAt: true
-          },
-          orderBy: { createdAt: 'asc' }
-        }
+        updatedAt: true
       }
     });
 
     if (!user) {
+      logWarn('User not found in get current user', { userId: req.user.id });
       return res.status(404).json({
         success: false,
         msg: "User not found"
       });
     }
 
+    logInfo('Current user retrieved successfully', { userId: req.user.id });
+
     res.json({
       success: true,
+      msg: "Current user retrieved successfully",
       data: {
         user: {
           ...user,
-          childrenCount: user.children.length
+          childrenCount: user.children?.length || 0
         }
       }
     });
+
   } catch (error) {
-    console.error("Get current user error:", error);
+    logError("Get current user error", error, { userId: req.user?.id });
     res.status(500).json({
       success: false,
       msg: "Internal server error"
