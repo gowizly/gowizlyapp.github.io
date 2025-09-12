@@ -37,12 +37,12 @@ const FamilyCalendarApp = () => {
   const [showAddEvent, setShowAddEvent] = useState(false);
   const [showEditEvent, setShowEditEvent] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
-  const [showAIAssistant, setShowAIAssistant] = useState(false);
   const [newChild, setNewChild] = useState({ name: '', gradeLevel: '', schoolName: '', birthDate: '' });
   const [childValidationErrors, setChildValidationErrors] = useState<ChildValidationError[]>([]);
   const [isLoadingEvents, setIsLoadingEvents] = useState(false);
   const [eventsByDate, setEventsByDate] = useState<{ [date: string]: Event[] }>({});
   const isLoadingRef = useRef(false);
+
   // Handle child creation completion - refresh children data
   const handleChildCreated = useCallback(async () => {
     console.log('👶 Refreshing children list after child creation...');
@@ -207,7 +207,6 @@ const FamilyCalendarApp = () => {
     await loadEventsForDateRange();
   };
 
-
   const AddChildModal = () => (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg shadow-2xl w-full max-w-md">
@@ -353,7 +352,7 @@ const FamilyCalendarApp = () => {
       <Navigation
         currentView={currentView}
         onViewChange={setCurrentView}
-        onAIAssistantOpen={() => setShowAIAssistant(true)}
+        onAIAssistantOpen={() => setCurrentView('ai-assistant')}
       />
       
       {currentView === 'calendar' && (
@@ -383,6 +382,13 @@ const FamilyCalendarApp = () => {
           onChildCreated={handleChildCreated}
         />
       )}
+      {currentView === 'ai-assistant' && (
+        <AIAssistant
+          children={children}
+          onEventsCreated={handleEventCreated}
+          onBack={() => setCurrentView('calendar')}
+        />
+      )}
       
       {showAddChild && <AddChildModal />}
       {showAddEvent && (
@@ -406,12 +412,6 @@ const FamilyCalendarApp = () => {
           onEventDeleted={handleEventDeleted}
         />
       )}
-      <AIAssistant 
-        isOpen={showAIAssistant} 
-        onClose={() => setShowAIAssistant(false)}
-        children={children}
-        onEventsCreated={handleEventCreated}
-      />
       
     </div>
   );

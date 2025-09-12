@@ -213,6 +213,13 @@ export const validateChildUpdate = [
       }
       return true;
     }),
+  
+  // body("googleClassroomEmail")
+  //   .optional()
+  //   .isEmail()
+  //   .normalizeEmail()
+  //   .withMessage("Google Classroom email must be a valid email address"),
+  
   validateRequest
 ];
 

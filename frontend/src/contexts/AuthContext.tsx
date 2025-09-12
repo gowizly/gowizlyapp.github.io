@@ -14,6 +14,7 @@ interface User {
   isVerified?: boolean;
   createdAt?: string;
   updatedAt?: string;
+  childrenCount?: number;
 }
 
 interface AuthContextType {
@@ -72,7 +73,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           'Content-Type': 'application/json'
         }
       });
-console.log("response of auth context is:",response);
+      console.log("response of auth context is:",response);
       console.log('👤 User profile response status:', response.status);
 
       if (!response.data) {
@@ -83,12 +84,35 @@ console.log("response of auth context is:",response);
 
       const data = response.data;
       console.log('👤 User profile data:', data);
-      //📡 Raw response: {"success":true,"data":{"user":{"id":3,"username":"Vaibhaw Anand","email":"vaibhaw@coretechies.com","isVerified":true,"createdAt":"2025-08-29T09:58:08.265Z","updatedAt":"2025-08-29T09:58:08.265Z","chi
+      /*
+      {
+    "success": true,
+    "msg": "Current user retrieved successfully",
+    "data": {
+        "user": {
+            "id": 6,
+            "username": "gisija19351",
+            "email": "memovo5664@poesd.com",
+            "address": null,
+            "isVerified": true,
+            "createdAt": "2025-09-12T10:42:36.644Z",
+            "updatedAt": "2025-09-12T10:43:05.964Z",
+            "childrenCount": 0
+        }
+    }
+}
+      
+      */
       return {
         id: (data.id || data.userId || 'temp_id').toString(),
         name: data.username || data.name || data.email.split('@')[0] || data.user.username,
         email: data.email,
-        username: data.username
+        username: data.username,
+        address: data.address,
+        isVerified: data.isVerified,
+        createdAt: data.createdAt,
+        updatedAt: data.updatedAt,
+        childrenCount: data.childrenCount
       };
     } catch (error) {
       console.error('❌ Error fetching user profile:', error);

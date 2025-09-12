@@ -11,11 +11,11 @@ interface UserManagementProps {
 const UserManagement: React.FC<UserManagementProps> = ({ onBack }) => {
   const { user, updateProfile, deleteAccount } = useAuth();
   const { showSuccess, showError, showWarning } = useToast();
-  
+
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  
+
   // Form state
   const [formData, setFormData] = useState({
     username: user?.username || '',
@@ -40,7 +40,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ onBack }) => {
     try {
       console.log('🔄 Updating user profile...');
       const success = await updateProfile(formData.username, formData.address);
-      
+
       if (success) {
         showSuccess('Profile Updated', 'Your profile has been updated successfully');
         setIsEditing(false);
@@ -60,9 +60,9 @@ const UserManagement: React.FC<UserManagementProps> = ({ onBack }) => {
     try {
       console.log('🗑️ Deleting user account...');
       showWarning('Account Deletion', 'Deleting your account...');
-      
+
       const success = await deleteAccount();
-      
+
       if (success) {
         showSuccess('Account Deleted', 'Your account has been deleted successfully');
         onBack();
@@ -92,7 +92,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ onBack }) => {
     <div className="min-h-screen bg-gray-50">
       {/* Common Header */}
       <Header />
-      
+
       {/* Page Header */}
       <div className="bg-white shadow-sm border-b border-gray-200">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -108,8 +108,8 @@ const UserManagement: React.FC<UserManagementProps> = ({ onBack }) => {
               </button>
             </div>
             <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                <User className="w-5 h-5 text-blue-600" />
+              <div className="w-10 h-10 bg-blue-100 rounded-full flex justify-center">
+                <User className="w-5 h-5 mt-2 text-blue-600" />
               </div>
               <h1 className="text-2xl font-bold text-gray-900">User Management</h1>
             </div>
@@ -125,111 +125,112 @@ const UserManagement: React.FC<UserManagementProps> = ({ onBack }) => {
             <div className="max-w-2xl mx-auto">
               {/* Profile Information */}
               <div className="space-y-6">
-            {/* Username */}
-            <div className="space-y-2">
-              <label className="flex items-center text-sm font-medium text-gray-700">
-                <User className="w-4 h-4 mr-2 text-gray-500" />
-                Username
-              </label>
-              {isEditing ? (
-                <input
-                  type="text"
-                  name="username"
-                  value={formData.username}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Enter username"
-                  disabled={isLoading}
-                />
-              ) : (
-                <div className="px-3 py-2 bg-gray-50 rounded-lg text-gray-800">
-                  {user?.username || 'Not set'}
+                {/* Username */}
+                <div className="space-y-2">
+                  <label className="flex text-sm font-medium text-gray-700">
+                    <User className="w-4 h-4 mr-2 text-gray-500" />
+                    Username
+                  </label>
+                  {isEditing ? (
+                    <input
+                      type="text"
+                      name="username"
+                      value={formData.username}
+                      onChange={handleInputChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-left"
+                      placeholder="Enter username"
+                      disabled={isLoading}
+                    />
+                  ) : (
+                    <div className="px-3 py-2 bg-gray-50 rounded-lg text-gray-800 text-left">
+                      {user?.username || 'Not set'}
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
 
-            {/* Email (Read-only) */}
-            <div className="space-y-2">
-              <label className="flex items-center text-sm font-medium text-gray-700">
-                <Mail className="w-4 h-4 mr-2 text-gray-500" />
-                Email
-              </label>
-              <div className="px-3 py-2 bg-gray-50 rounded-lg text-gray-600">
-                {user?.email || 'Not set'}
-                <span className="text-xs text-gray-500 ml-2">(read-only)</span>
+                {/* Email (Read-only) */}
+                <div className="space-y-2">
+                  <label className="flex text-sm font-medium text-gray-700">
+                    <Mail className="w-4 h-4 mr-2 text-gray-500" />
+                    Email
+                  </label>
+                  <div className="px-3 py-2 bg-gray-50 rounded-lg text-gray-600 text-left">
+                    {user?.email || 'Not set'}
+                    <span className="text-xs text-gray-500 ml-2">(read-only)</span>
+                  </div>
+                </div>
+
+                {/* Address */}
+                <div className="space-y-2">
+                  <label className="flex text-sm font-medium text-gray-700">
+                    <MapPin className="w-4 h-4 mr-2 text-gray-500" />
+                    Address
+                  </label>
+                  {/* Address (Read / Edit) */}
+                  {isEditing ? (
+                    <input
+                      type="text"
+                      name="address"
+                      value={formData.address}
+                      onChange={handleInputChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-left"
+                      placeholder="Enter address"
+                      disabled={isLoading}
+                    />
+                  ) : (
+                    <div className="px-3 py-2 bg-gray-50 rounded-lg text-gray-800 text-left">
+                      {user?.address || 'Not set'}
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-
-            {/* Address */}
-            <div className="space-y-2">
-              <label className="flex items-center text-sm font-medium text-gray-700">
-                <MapPin className="w-4 h-4 mr-2 text-gray-500" />
-                Address
-              </label>
-              {isEditing ? (
-                <input
-                  type="text"
-                  name="address"
-                  value={formData.address}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Enter address"
-                  disabled={isLoading}
-                />
-              ) : (
-                <div className="px-3 py-2 bg-gray-50 rounded-lg text-gray-800">
-                  {user?.address || 'Not set'}
-                </div>
-              )}
-            </div>
-          </div>
 
               {/* Action Buttons */}
               <div className="flex flex-col space-y-4 pt-8 border-t border-gray-200">
-            {isEditing ? (
-              <div className="flex space-x-3">
-                <button
-                  onClick={handleSaveProfile}
-                  disabled={isLoading}
-                  className="flex-1 flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  {isLoading ? (
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  ) : (
-                    <Save className="w-4 h-4 mr-2" />
-                  )}
-                  Save Changes
-                </button>
-                <button
-                  onClick={handleCancel}
-                  disabled={isLoading}
-                  className="flex-1 flex items-center justify-center px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  Cancel
-                </button>
-              </div>
-            ) : (
-              <button
-                onClick={() => setIsEditing(true)}
-                disabled={isLoading}
-                className="flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                <Edit3 className="w-4 h-4 mr-2" />
-                Edit Profile
-              </button>
-            )}
+                {isEditing ? (
+                  <div className="flex space-x-3">
+                    <button
+                      onClick={handleSaveProfile}
+                      disabled={isLoading}
+                      className="flex-1 flex items-center justify-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      {isLoading ? (
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      ) : (
+                        <Save className="w-4 h-4 mr-2" />
+                      )}
+                      Save Changes
+                    </button>
+                    <button
+                      onClick={handleCancel}
+                      disabled={isLoading}
+                      className="flex-1 flex items-center justify-center px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setIsEditing(true)}
+                    disabled={isLoading}
+                    className="flex items-center justify-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    <Edit3 className="w-4 h-4 mr-2" />
+                    Edit Profile
+                  </button>
+                )}
 
-            {/* Delete Account Button */}
-            {!isEditing && (
-              <button
-                onClick={() => setShowDeleteConfirm(true)}
-                disabled={isLoading}
-                className="flex items-center justify-center px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                <Trash2 className="w-4 h-4 mr-2" />
-                Delete Account
-              </button>
-              )}
+                {/* Delete Account Button */}
+                {!isEditing && (
+                  <button
+                    onClick={() => setShowDeleteConfirm(true)}
+                    disabled={isLoading}
+                    className="flex items-center justify-center px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Delete Account
+                  </button>
+                )}
               </div>
             </div>
           </div>
