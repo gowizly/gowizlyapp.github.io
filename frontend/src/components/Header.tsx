@@ -54,7 +54,7 @@ const Header: React.FC = () => {
       <div className="bg-purple-600 text-white p-4 flex justify-between items-center">
         <div className="flex items-center space-x-4">
           <Calendar className="w-8 h-8" />
-          <h1 className="text-xl font-bold">Family Calendar</h1>
+          <h1 className="text-xl font-bold">Gowizly Family Calendar</h1>
         </div>
         <div className="flex items-center space-x-4">
           <button
