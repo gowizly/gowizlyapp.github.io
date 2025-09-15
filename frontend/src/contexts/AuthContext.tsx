@@ -64,62 +64,50 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }, [user, token, isEmailVerified, isAuthenticated]);
 
   // Fetch user profile from API
-  const fetchUserProfile = async (token: string): Promise<User | null> => {
-    try {
-      console.log('👤 Fetching user profile with token:', token.substring(0, 20) + '...');
-      console.log("API_BASE_URL is:",AUTH_BASE_URL);
-      const response = await axios.get(`${AUTH_BASE_URL}/me`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      console.log("response of auth context is:",response);
-      console.log('👤 User profile response status:', response.status);
-
-      if (!response.data) {
-        const errorData = await response.data.json().catch(() => ({}));
-        console.error('❌ Failed to fetch user profile:', response.status, errorData);
-        throw new Error(`Failed to fetch user profile: ${response.status}`);
+const fetchUserProfile = async (token: string): Promise<User | null> => {
+  try {
+    console.log('👤 Fetching user profile with token:', token.substring(0, 20) + '...');
+    console.log("API_BASE_URL is:", AUTH_BASE_URL);
+    
+    const response = await axios.get(`${AUTH_BASE_URL}/me`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
       }
+    });
+    
+    console.log('👤 User profile response status:', response.status);
+    console.log("Full response data:", response.data);
 
-      const data = response.data;
-      console.log('👤 User profile data:', data);
-      /*
-      {
-    "success": true,
-    "msg": "Current user retrieved successfully",
-    "data": {
-        "user": {
-            "id": 6,
-            "username": "gisija19351",
-            "email": "memovo5664@poesd.com",
-            "address": null,
-            "isVerified": true,
-            "createdAt": "2025-09-12T10:42:36.644Z",
-            "updatedAt": "2025-09-12T10:43:05.964Z",
-            "childrenCount": 0
-        }
+    if (!response.data || !response.data.success) {
+      console.error('❌ Failed to fetch user profile:', response.status, response.data);
+      throw new Error(`Failed to fetch user profile: ${response.status}`);
     }
-}
-      
-      */
-      return {
-        id: (data.id || data.userId || 'temp_id').toString(),
-        name: data.username || data.name || data.email.split('@')[0] || data.user.username,
-        email: data.email,
-        username: data.username,
-        address: data.address,
-        isVerified: data.isVerified,
-        createdAt: data.createdAt,
-        updatedAt: data.updatedAt,
-        childrenCount: data.childrenCount
-      };
-    } catch (error) {
-      console.error('❌ Error fetching user profile:', error);
-      return null;
-    }
-  };
+
+    const data = response.data.data; // Note: accessing data.data since backend returns { success: true, data: { user: {...} } }
+    console.log('👤 User profile data:', data);
+
+    // Handle the nested structure from backend
+    const userData = data.user || data;
+    
+    return {
+      id: userData.id.toString(),
+      name: userData.username || userData.name || userData.email.split('@')[0],
+      email: userData.email,
+      username: userData.username,
+      address: userData.address,
+      isVerified: userData.isVerified,
+      createdAt: userData.createdAt,
+      updatedAt: userData.updatedAt,
+      childrenCount: userData.childrenCount || 0
+    };
+  } catch (error) {
+    console.error('❌ Error fetching user profile:', error);
+    return null;
+  }
+};
+
+
 
   // Initialize auth state from cookies on mount
   useEffect(() => {
@@ -213,102 +201,104 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   }, [user, token, isLoading]);
 
-  const login = async (email: string, password: string, rememberMe: boolean = false): Promise<boolean> => {
-    try {
-      setIsLoading(true);
-      
-      console.log('🔐 Attempting login for:', email);
-      
-      const response = await axios.post(`${AUTH_BASE_URL}/login`, 
-        { email, password },
-        {
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        }
-      );
-
-      console.log('📡 Login response status:', response.status);
-      
-      const data = response.data;
-      console.log('📡 Login response data:', data);
-      console.log('📡 Login response data keys:', Object.keys(data));
-      console.log('📡 Looking for token in:', { 
-        token: data.token, 
-        accessToken: data.accessToken, 
-        access_token: data.access_token,
-        jwt: data.jwt,
-        authToken: data.authToken
-      });
-
-      if (!response.data) {
-        console.error('❌ Login failed:', data.message || 'Unknown error');
-        return false;
+  // Fixed login function in AuthContext
+const login = async (email: string, password: string, rememberMe: boolean = false): Promise<boolean> => {
+  try {
+    setIsLoading(true);
+    
+    console.log('🔐 Attempting login for:', email);
+    
+    const response = await axios.post(`${AUTH_BASE_URL}/login`, 
+      { email, password },
+      {
+        headers: {
+          'Content-Type': 'application/json',
+        },
       }
+    );
 
-      // Check if we have a token in the response (try multiple possible field names)
-      const token = data.token || data.accessToken || data.access_token || data.jwt || data.authToken || data.bearer ||
-                    data.data?.token || data.data?.accessToken || data.data?.access_token || data.data?.jwt;
-      
-      if (token) {
-        console.log('🎯 Token received, attempting to get user data...');
-        
-        // First try to use user data from login response if available
-        let userData = null;
-        
-        if (data.data?.user) {
-          console.log('✅ Using user data from login response');
-          userData = {
-            id: data.data.user.id.toString(),
-            name: data.data.user.username || data.data.user.email.split('@')[0],
-            email: data.data.user.email,
-            username: data.data.user.username
-          };
-        } else {
-          console.log('🔄 Fetching user profile from /me endpoint...');
-          userData = await fetchUserProfile(token);
-        }
-        
-        // If still no user data, create from login response or email
-        if (!userData) {
-          console.log('⚠️ Creating user from basic login data...');
-          userData = {
-            id: data.userId?.toString() || data.id?.toString() || 'temp_id',
-            name: data.username || email.split('@')[0],
-            email: email,
-            username: data.username || email.split('@')[0]
-          };
-        }
-        
-        console.log('✅ User data ready:', userData);
-        setToken(token);
-        setUser(userData);
-        setIsEmailVerified(true); // Assume verified if login successful
-        
-        // Remember username if requested
-        if (rememberMe) {
-          setCookie('remembered_username', email, 30);
-        } else {
-          deleteCookie('remembered_username');
-        }
-        
-        return true;
-      } else {
-        console.error('❌ No token in login response');
-        console.log('🔧 Full response data for debugging:', JSON.stringify(data, null, 2));
-        
-        // No valid token received from backend
-        console.error('❌ Login failed: No valid authentication token received from server');
-        
-        return false;
-      }
-    } catch (error) {
-      console.error('❌ Login error:', error);
+    console.log('📡 Login response status:', response.status);
+    
+    const data = response.data;
+    console.log('📡 Login response data:', data);
+
+    if (!data || !data.success) {
+      console.error('❌ Login failed:', data?.msg || 'Unknown error');
       return false;
-    } finally {
-      setIsLoading(false);
     }
-  };
+
+    // Extract token from response (backend sends token in data.data.token)
+    const token = data.data?.token;
+    
+    if (token) {
+      console.log('🎯 Token received, setting up user data...');
+      
+      // Extract user data from login response
+      let userData = null;
+      
+      if (data.data?.user) {
+        console.log('✅ Using user data from login response');
+        userData = {
+          id: data.data.user.id.toString(),
+          name: data.data.user.username || data.data.user.email.split('@')[0],
+          email: data.data.user.email,
+          username: data.data.user.username,
+          address: data.data.user.address,
+          isVerified: data.data.user.isVerified,
+          createdAt: data.data.user.createdAt,
+          updatedAt: data.data.user.updatedAt,
+          childrenCount: data.data.user.childrenCount || 0
+        };
+      } else {
+        console.log('🔄 Fetching user profile from /me endpoint...');
+        userData = await fetchUserProfile(token);
+      }
+      
+      // If still no user data, create minimal user from email
+      if (!userData) {
+        console.log('⚠️ Creating minimal user data from email...');
+        userData = {
+          id: 'temp_id',
+          name: email.split('@')[0],
+          email: email,
+          username: email.split('@')[0],
+          isVerified: true // Assume verified if login successful
+        };
+      }
+      
+      console.log('✅ User data ready:', userData);
+      setToken(token);
+      setUser(userData);
+      setIsEmailVerified(true); // Assume verified if login successful
+      
+      // Remember username if requested
+      if (rememberMe) {
+        setCookie('remembered_username', email, 30);
+      } else {
+        deleteCookie('remembered_username');
+      }
+      
+      return true;
+    } else {
+      console.error('❌ No token in login response');
+      console.log('🔧 Full response data for debugging:', JSON.stringify(data, null, 2));
+      return false;
+    }
+  } catch (error: any) {
+    console.error('❌ Login error:', error);
+    
+    // Handle specific error responses
+    if (error.response?.status === 401) {
+      console.error('❌ Invalid credentials');
+    } else if (error.response?.data?.msg) {
+      console.error('❌ Login failed:', error.response.data.msg);
+    }
+    
+    return false;
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   const signup = async (username: string, email: string, password: string, acceptTerms: boolean): Promise<{ success: boolean; needsVerification?: boolean; emailExists?: boolean; emailVerified?: boolean; message?: string; errors?: Record<string, string> }> => {
     try {
@@ -329,14 +319,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       const data = response.data;
 
-      if (!response.data) {
-        return { success: false, message: data.message || 'Registration failed. Please try again.' };
+      if (!data || !data.success) {
+        return { success: false, message: data?.msg || data?.message || 'Registration failed. Please try again.' };
       }
 
       return { 
         success: true, 
         needsVerification: true, 
-        message: data.message || 'Account created! Please check your email for verification.' 
+        message: data.msg || data.message || 'Account created! Please check your email for verification.' 
       };
     } catch (error: any) {
       console.error('Signup error:', error);
@@ -409,61 +399,66 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     console.log('✅ User logged out');
   };
 
-  const updateProfile = async (username: string, address: string): Promise<boolean> => {
-    try {
-      setIsLoading(true);
-      console.log('🔄 Updating user profile...');
+  // Fixed updateProfile function in AuthContext
+const updateProfile = async (username: string, address: string): Promise<boolean> => {
+  try {
+    setIsLoading(true);
+    console.log('🔄 Updating user profile...');
 
-      if (!token) {
-        console.error('❌ No authentication token available');
-        return false;
-      }
-
-      const response = await axios.patch(`${AUTH_BASE_URL}/profile`, {
-        username,
-        address
-      }, {
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-      });
-
-      console.log('📡 Profile update response status:', response.status);
-      const data = response.data;
-
-      if (data.success && data.data?.user) {
-        console.log('✅ Profile updated successfully');
-        
-        // Update user state with new profile data
-        const updatedUser = {
-          ...user,
-          ...data.data.user
-        } as User;
-        
-        setUser(updatedUser);
-        
-        // Update cookie with new user data
-        setCookie('user_data', JSON.stringify(updatedUser), 7);
-        
-        return true;
-      } else {
-        console.error('❌ Profile update failed:', data.msg || 'Unknown error');
-        return false;
-      }
-    } catch (error: any) {
-      console.error('❌ Error updating profile:', error);
-      
-      if (error.response?.status === 401) {
-        console.log('🔓 Authentication failed during profile update');
-        logout();
-      }
-      
+    if (!token) {
+      console.error('❌ No authentication token available');
       return false;
-    } finally {
-      setIsLoading(false);
     }
-  };
+
+    const response = await axios.patch(`${AUTH_BASE_URL}/profile`, {
+      username,
+      address
+    }, {
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+    });
+
+    console.log('📡 Profile update response status:', response.status);
+    
+    if (!response.data || !response.data.success) {
+      console.error('❌ Profile update failed:', response.data?.msg || 'Unknown error');
+      return false;
+    }
+
+    const data = response.data;
+    console.log('✅ Profile updated successfully', data);
+    
+    // Update user state with new profile data
+    if (data.data?.user && user) {
+      const updatedUser = {
+        ...user,
+        ...data.data.user,
+        id: data.data.user.id.toString(), // Ensure ID is string
+        name: data.data.user.username || user.name // Use username as name
+      } as User;
+      
+      setUser(updatedUser);
+      
+      // Update cookie with new user data
+      setCookie('user_data', JSON.stringify(updatedUser), 7);
+    }
+    
+    return true;
+  } catch (error: any) {
+    console.error('❌ Error updating profile:', error);
+    
+    if (error.response?.status === 401) {
+      console.log('🔓 Authentication failed during profile update');
+      logout();
+    }
+    
+    return false;
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   const deleteAccount = async (): Promise<boolean> => {
     try {
@@ -522,8 +517,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       const data = response.data;
 
-      if (!response.data) {
-        console.error('Email verification failed:', data.message || 'Unknown error');
+      if (!data || !data.success) {
+        console.error('Email verification failed:', data?.msg || data?.message || 'Unknown error');
         return false;
       }
 
@@ -554,10 +549,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       const data = response.data;
 
-      if (!response.data) {
+      if (!data || !data.success) {
         return { 
           success: false, 
-          message: data.msg || 'Failed to resend verification email. Please try again.' 
+          message: data?.msg || data?.message || 'Failed to resend verification email. Please try again.' 
         };
       }
 
@@ -594,10 +589,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         }
       );
 
-          const data = response.data;
+      const data = response.data;
 
-      if (!response.data) {
-        console.error('Password reset request failed:', data.message || 'Unknown error');
+      if (!data || !data.success) {
+        console.error('Password reset request failed:', data?.msg || data?.message || 'Unknown error');
         return false;
       }
 
@@ -625,8 +620,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
       const data = response.data;
 
-            if (!response.data) {
-        console.error('Password reset failed:', data.message || 'Unknown error');
+      if (!data || !data.success) {
+        console.error('Password reset failed:', data?.msg || data?.message || 'Unknown error');
         return false;
       }
 

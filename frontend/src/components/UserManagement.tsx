@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ArrowLeft, User, Mail, MapPin, Trash2, Edit3, Save, AlertTriangle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
@@ -9,7 +9,7 @@ interface UserManagementProps {
 }
 
 const UserManagement: React.FC<UserManagementProps> = ({ onBack }) => {
-  const { user, updateProfile, deleteAccount } = useAuth();
+  const { user, updateProfile, deleteAccount, isLoading: authLoading } = useAuth();
   const { showSuccess, showError, showWarning } = useToast();
 
   const [isEditing, setIsEditing] = useState(false);
@@ -21,6 +21,16 @@ const UserManagement: React.FC<UserManagementProps> = ({ onBack }) => {
     username: user?.username || '',
     address: user?.address || ''
   });
+
+  // Update form data when user data changes
+  useEffect(() => {
+    if (user) {
+      setFormData({
+        username: user.username || '',
+        address: user.address || ''
+      });
+    }
+  }, [user]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -87,6 +97,41 @@ const UserManagement: React.FC<UserManagementProps> = ({ onBack }) => {
     });
     setIsEditing(false);
   };
+
+  // Show loading state while auth is loading
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Header />
+        <div className="flex items-center justify-center py-20">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">Loading user data...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show message if no user data
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Header />
+        <div className="flex items-center justify-center py-20">
+          <div className="text-center">
+            <p className="text-gray-600">No user data available. Please try refreshing the page.</p>
+            <button 
+              onClick={() => window.location.reload()} 
+              className="mt-4 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+            >
+              Refresh Page
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
