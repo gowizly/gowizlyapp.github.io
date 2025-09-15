@@ -504,7 +504,7 @@ export const getCurrentUser = async (req, res) => {
       data: {
         user: {
           ...user,
-          childrenCount: user.children?.length || 0
+          childrenCount: 0 // Default to 0 since children relation is not selected
         }
       }
     });
@@ -778,7 +778,12 @@ export const getUserProfile = async (req, res) => {
     res.json({
       success: true,
       msg: "Profile retrieved successfully",
-      data: { user }
+      data: { 
+        user: {
+          ...user,
+          childrenCount: 0 // Default to 0 since children relation is not selected
+        }
+      }
     });
 
   } catch (error) {
