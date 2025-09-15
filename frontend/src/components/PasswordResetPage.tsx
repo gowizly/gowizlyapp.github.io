@@ -131,7 +131,7 @@ const PasswordResetPage: React.FC<PasswordResetPageProps> = ({ onBackToLogin }) 
 
       <form onSubmit={handleRequestReset} className="space-y-6">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Email Address</label>
+          <label className="block text-left text-sm font-medium text-gray-700 mb-2">Email Address</label>
           <div className="relative">
             <Mail className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
             <input
@@ -192,7 +192,7 @@ const PasswordResetPage: React.FC<PasswordResetPageProps> = ({ onBackToLogin }) 
 
       <form onSubmit={handlePasswordReset} className="space-y-6">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">New Password</label>
+          <label className="block text-left text-sm font-medium text-gray-700 mb-2">New Password</label>
           <div className="relative">
             <Lock className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
             <input
@@ -218,7 +218,7 @@ const PasswordResetPage: React.FC<PasswordResetPageProps> = ({ onBackToLogin }) 
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Confirm New Password</label>
+          <label className="block text-left text-sm font-medium text-gray-700 mb-2">Confirm New Password</label>
           <div className="relative">
             <Lock className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
             <input

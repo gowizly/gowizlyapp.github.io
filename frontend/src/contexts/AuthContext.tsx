@@ -24,9 +24,10 @@ interface AuthContextType {
   isLoading: boolean;
   isEmailVerified: boolean;
   login: (email: string, password: string, rememberMe?: boolean) => Promise<boolean>;
-  signup: (username: string, email: string, password: string, acceptTerms: boolean) => Promise<{ success: boolean; needsVerification?: boolean; message?: string }>;
+  signup: (username: string, email: string, password: string, acceptTerms: boolean) => Promise<{ success: boolean; needsVerification?: boolean; emailExists?: boolean; emailVerified?: boolean; message?: string; errors?: Record<string, string> }>;
   logout: () => void;
   verifyEmail: (token: string) => Promise<boolean>;
+  resendVerification: (email: string) => Promise<{ success: boolean; message?: string }>;
   requestPasswordReset: (email: string) => Promise<boolean>;
   resetPassword: (token: string, newPassword: string) => Promise<boolean>;
   googleLogin: () => Promise<boolean>;
@@ -309,7 +310,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  const signup = async (username: string, email: string, password: string, acceptTerms: boolean): Promise<{ success: boolean; needsVerification?: boolean; message?: string }> => {
+  const signup = async (username: string, email: string, password: string, acceptTerms: boolean): Promise<{ success: boolean; needsVerification?: boolean; emailExists?: boolean; emailVerified?: boolean; message?: string; errors?: Record<string, string> }> => {
     try {
       setIsLoading(true);
       
@@ -337,8 +338,62 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         needsVerification: true, 
         message: data.message || 'Account created! Please check your email for verification.' 
       };
-    } catch (error) {
+    } catch (error: any) {
       console.error('Signup error:', error);
+      
+      // Handle specific error cases
+      if (error.response?.status === 400) {
+        const errorData = error.response.data;
+        const errorMsg = errorData?.errorMsg || errorData?.message || errorData?.msg;
+        
+        // Check for validation errors
+        if (errorData?.errors && typeof errorData.errors === 'object') {
+          return { 
+            success: false, 
+            message: errorMsg || 'Please fix the validation errors below.',
+            errors: errorData.errors 
+          };
+        }
+        
+        // Check if it's an email already exists error
+        if (errorMsg && (
+          errorMsg.toLowerCase().includes('email already') || 
+          errorMsg.toLowerCase().includes('already registered') ||
+          errorMsg.toLowerCase().includes('email exists')
+        )) {
+          // Check if user exists but is not verified (backend should indicate this)
+          if (errorData?.isVerified === false || errorData?.needsVerification === true) {
+            return { 
+              success: false, 
+              emailExists: true, 
+              emailVerified: false,
+              message: 'This email is already registered but not verified. Would you like us to resend the verification email?' 
+            };
+          }
+          // Email exists and is verified
+          return { 
+            success: false, 
+            emailExists: true,
+            emailVerified: true,
+            message: 'This email is already registered and verified. Please login instead.' 
+          };
+        }
+        
+        // Check for username already exists
+        if (errorMsg && (
+          errorMsg.toLowerCase().includes('username already') || 
+          errorMsg.toLowerCase().includes('username exists')
+        )) {
+          return { 
+            success: false, 
+            message: errorMsg,
+            errors: { username: errorMsg }
+          };
+        }
+        
+        return { success: false, message: errorMsg || 'Registration failed. Please try again.' };
+      }
+      
       return { success: false, message: 'An error occurred during registration.' };
     } finally {
       setIsLoading(false);
@@ -482,6 +537,50 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
+  const resendVerification = async (email: string): Promise<{ success: boolean; message?: string }> => {
+    try {
+      setIsLoading(true);
+      
+      console.log('📧 Resending verification email to:', email);
+      
+      const response = await axios.post(`${AUTH_BASE_URL}/resend-verification`, 
+        { email },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      const data = response.data;
+
+      if (!response.data) {
+        return { 
+          success: false, 
+          message: data.msg || 'Failed to resend verification email. Please try again.' 
+        };
+      }
+
+      return { 
+        success: true, 
+        message: data.msg || 'Verification email sent successfully!' 
+      };
+    } catch (error: any) {
+      console.error('Resend verification error:', error);
+      
+      // Handle specific error cases
+      if (error.response?.status === 404) {
+        return { success: false, message: 'User not found. Please check the email address.' };
+      } else if (error.response?.status === 400) {
+        return { success: false, message: error.response.data?.msg || 'Email is already verified.' };
+      } else {
+        return { success: false, message: 'Failed to resend verification email. Please try again.' };
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const requestPasswordReset = async (email: string): Promise<boolean> => {
     try {
       setIsLoading(true);
@@ -569,6 +668,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     signup,
     logout,
     verifyEmail,
+    resendVerification,
     requestPasswordReset,
     resetPassword,
     googleLogin,

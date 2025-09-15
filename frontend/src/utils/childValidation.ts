@@ -67,20 +67,30 @@ export const validateChild = (childData: Partial<Child>): ValidationResult => {
     if (isNaN(birthDate.getTime())) {
       errors.push({ field: 'birthDate', message: 'Birth date must be a valid date' });
     } else {
+      // Compare dates only (strip time component)
       const today = new Date();
-      const age = today.getFullYear() - birthDate.getFullYear();
-      const monthDiff = today.getMonth() - birthDate.getMonth();
-      const dayDiff = today.getDate() - birthDate.getDate();
+      const birthDateOnly = new Date(birthDate.getFullYear(), birthDate.getMonth(), birthDate.getDate());
+      const todayOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
       
-      // Adjust age if birthday hasn't occurred this year
-      const actualAge = (monthDiff < 0 || (monthDiff === 0 && dayDiff < 0)) ? age - 1 : age;
-      
-      if (actualAge < 0 || actualAge > 21) {
-        errors.push({ field: 'birthDate', message: 'Child must be between 0 and 21 years old' });
+      // Birth date must be before today (not today or future)
+      if (birthDateOnly >= todayOnly) {
+        errors.push({ field: 'birthDate', message: 'Birth date must be in the past' });
+      } else {
+        const age = today.getFullYear() - birthDate.getFullYear();
+        const monthDiff = today.getMonth() - birthDate.getMonth();
+        const dayDiff = today.getDate() - birthDate.getDate();
+        
+        // Adjust age if birthday hasn't occurred this year
+        const actualAge = (monthDiff < 0 || (monthDiff === 0 && dayDiff < 0)) ? age - 1 : age;
+        
+        // Age must be greater than 0 and less than 21 (exclusive range)
+        if (actualAge >= 21) {
+          errors.push({ field: 'birthDate', message: 'Child must be under 21 years old' });
+        }
+        // Note: actualAge < 0 is not possible since we already checked birthDate < today
       }
     }
   }
-
   return {
     isValid: errors.length === 0,
     errors
@@ -119,4 +129,86 @@ export const validateChildForCreation = (childData: Omit<Child, 'id'>): Validati
 export const validateChildForUpdate = (childData: Partial<Child>): ValidationResult => {
   // For updates, all fields are optional but must be valid if provided
   return validateChild(childData);
+};
+
+// Individual field validation functions for real-time validation
+export const validateName = (name: string): ValidationError | null => {
+  if (!name || name.trim().length === 0) {
+    return { field: 'name', message: 'Child name is required' };
+  }
+  
+  const trimmedName = name.trim();
+  
+  if (trimmedName.length < 2 || trimmedName.length > 50) {
+    return { field: 'name', message: 'Child name must be between 2 and 50 characters' };
+  }
+  
+  // Check if name contains only letters, spaces, hyphens, and apostrophes
+  if (!/^[a-zA-Z\s'-]+$/.test(trimmedName)) {
+    return { field: 'name', message: 'Child name can only contain letters, spaces, hyphens, and apostrophes' };
+  }
+  
+  return null;
+};
+
+export const validateGradeLevel = (gradeLevel: string): ValidationError | null => {
+  if (!gradeLevel || gradeLevel.trim().length === 0) {
+    return { field: 'gradeLevel', message: 'Grade level is required' };
+  }
+  
+  if (!VALID_GRADE_LEVELS.includes(gradeLevel.trim())) {
+    return { field: 'gradeLevel', message: 'Please select a valid grade level' };
+  }
+  
+  return null;
+};
+
+export const validateSchoolName = (schoolName: string): ValidationError | null => {
+  if (!schoolName || schoolName.trim().length === 0) {
+    return { field: 'schoolName', message: 'School name is required' };
+  }
+  
+  const trimmedSchoolName = schoolName.trim();
+  
+  if (trimmedSchoolName.length < 2 || trimmedSchoolName.length > 100) {
+    return { field: 'schoolName', message: 'School name must be between 2 and 100 characters' };
+  }
+  
+  return null;
+};
+
+export const validateBirthDate = (birthDate: string): ValidationError | null => {
+  if (!birthDate || birthDate.trim().length === 0) {
+    return { field: 'birthDate', message: 'Birth date is required' };
+  }
+  
+  const date = new Date(birthDate);
+  
+  if (isNaN(date.getTime())) {
+    return { field: 'birthDate', message: 'Birth date must be a valid date' };
+  }
+  
+  // Compare dates only (strip time component)
+  const today = new Date();
+  const birthDateOnly = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const todayOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  
+  // Birth date must be before today (not today or future)
+  if (birthDateOnly >= todayOnly) {
+    return { field: 'birthDate', message: 'Birth date must be in the past' };
+  }
+  
+  const age = today.getFullYear() - date.getFullYear();
+  const monthDiff = today.getMonth() - date.getMonth();
+  const dayDiff = today.getDate() - date.getDate();
+  
+  // Adjust age if birthday hasn't occurred this year
+  const actualAge = (monthDiff < 0 || (monthDiff === 0 && dayDiff < 0)) ? age - 1 : age;
+  
+  // Age must be greater than 0 and less than 21 (exclusive range)
+  if (actualAge >= 21) {
+    return { field: 'birthDate', message: 'Child must be under 21 years old' };
+  }
+  
+  return null;
 };

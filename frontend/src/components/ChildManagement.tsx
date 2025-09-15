@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Users, Plus, Edit, Trash2, Save, X, User, AlertCircle, CheckCircle, Loader, ArrowLeft } from 'lucide-react';
+import { Users, Plus, Edit, Trash2, Save, X, User, AlertCircle, CheckCircle, Loader, ArrowLeft, Check } from 'lucide-react';
 import { Child, childApiService } from '../services/childApi';
-import { validateChildForCreation, validateChildForUpdate, ValidationError, VALID_GRADE_LEVELS } from '../utils/childValidation';
+import { validateChildForCreation, validateChildForUpdate, ValidationError, VALID_GRADE_LEVELS, validateName, validateGradeLevel, validateSchoolName, validateBirthDate } from '../utils/childValidation';
 import { Event, eventApiService } from '../services/eventApi';
 
 const eventTypes = {
@@ -36,6 +36,15 @@ const ChildManagement: React.FC<ChildManagementProps> = ({ onBack, onChildCreate
   });
   const [formLoading, setFormLoading] = useState(false);
   const [validationErrors, setValidationErrors] = useState<ValidationError[]>([]);
+  
+  // Real-time validation states
+  const [fieldTouched, setFieldTouched] = useState<Record<string, boolean>>({
+    name: false,
+    gradeLevel: false,
+    schoolName: false,
+    birthDate: false,
+  });
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   const [upcomingEvents, setUpcomingEvents] = useState<Event[]>([]);
   useEffect(() => {
@@ -74,7 +83,27 @@ const ChildManagement: React.FC<ChildManagementProps> = ({ onBack, onChildCreate
     setValidationErrors([]);
     setError(null);
 
-    // Validate child data
+    // Run real-time validation on all fields
+    const nameValid = validateField('name', formData.name);
+    const gradeLevelValid = validateField('gradeLevel', formData.gradeLevel);
+    const schoolNameValid = validateField('schoolName', formData.schoolName);
+    const birthDateValid = validateField('birthDate', formData.birthDate);
+
+    // Mark all fields as touched
+    setFieldTouched({
+      name: true,
+      gradeLevel: true,
+      schoolName: true,
+      birthDate: true,
+    });
+
+    // Check if all fields are valid
+    if (!nameValid || !gradeLevelValid || !schoolNameValid || !birthDateValid) {
+      console.warn('⚠️ Create child validation failed: Real-time validation errors found');
+      return;
+    }
+
+    // Double-check with comprehensive validation
     const validation = validateChildForCreation(formData);
 
     if (!validation.isValid) {
@@ -118,7 +147,27 @@ const ChildManagement: React.FC<ChildManagementProps> = ({ onBack, onChildCreate
     setValidationErrors([]);
     setError(null);
 
-    // Validate child data for update
+    // Run real-time validation on all fields
+    const nameValid = validateField('name', formData.name);
+    const gradeLevelValid = validateField('gradeLevel', formData.gradeLevel);
+    const schoolNameValid = validateField('schoolName', formData.schoolName);
+    const birthDateValid = validateField('birthDate', formData.birthDate);
+
+    // Mark all fields as touched
+    setFieldTouched({
+      name: true,
+      gradeLevel: true,
+      schoolName: true,
+      birthDate: true,
+    });
+
+    // Check if all fields are valid
+    if (!nameValid || !gradeLevelValid || !schoolNameValid || !birthDateValid) {
+      console.warn('⚠️ Update child validation failed: Real-time validation errors found');
+      return;
+    }
+
+    // Double-check with comprehensive validation
     const validation = validateChildForUpdate(formData);
 
     if (!validation.isValid) {
@@ -191,13 +240,81 @@ const ChildManagement: React.FC<ChildManagementProps> = ({ onBack, onChildCreate
       return date.toISOString().split('T')[0];
     };
 
-    setFormData({
+    const newFormData = {
       name: child.name,
       gradeLevel: child.gradeLevel,
       schoolName: child.schoolName,
       birthDate: formatDateForInput(child.birthDate),
+    };
+
+    setFormData(newFormData);
+    
+    // Reset validation states
+    setFieldTouched({
+      name: false,
+      gradeLevel: false,
+      schoolName: false,
+      birthDate: false,
     });
+    setFieldErrors({});
+    setValidationErrors([]);
+    
     setShowAddModal(true);
+  };
+
+  // Real-time field validation
+  const validateField = (fieldName: string, value: string) => {
+    let error: ValidationError | null = null;
+    
+    switch (fieldName) {
+      case 'name':
+        error = validateName(value);
+        break;
+      case 'gradeLevel':
+        error = validateGradeLevel(value);
+        break;
+      case 'schoolName':
+        error = validateSchoolName(value);
+        break;
+      case 'birthDate':
+        error = validateBirthDate(value);
+        break;
+    }
+    
+    setFieldErrors(prev => ({
+      ...prev,
+      [fieldName]: error ? error.message : ''
+    }));
+    
+    return error === null;
+  };
+
+  const handleFieldChange = (fieldName: string, value: string) => {
+    setFormData(prev => ({ ...prev, [fieldName]: value }));
+    
+    // Validate if field has been touched
+    if (fieldTouched[fieldName]) {
+      validateField(fieldName, value);
+    }
+  };
+
+  const handleFieldBlur = (fieldName: string, value: string) => {
+    setFieldTouched(prev => ({ ...prev, [fieldName]: true }));
+    validateField(fieldName, value);
+  };
+
+  const getFieldClassName = (fieldName: string) => {
+    const baseClasses = "w-full p-3 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-colors";
+    
+    if (!fieldTouched[fieldName]) {
+      return `${baseClasses} border-gray-300`;
+    }
+    
+    if (fieldErrors[fieldName]) {
+      return `${baseClasses} border-red-500 focus:ring-red-500`;
+    }
+    
+    return `${baseClasses} border-green-500 focus:ring-green-500`;
   };
 
   const resetForm = () => {
@@ -209,6 +326,13 @@ const ChildManagement: React.FC<ChildManagementProps> = ({ onBack, onChildCreate
     });
     setEditingChild(null);
     setValidationErrors([]);
+    setFieldTouched({
+      name: false,
+      gradeLevel: false,
+      schoolName: false,
+      birthDate: false,
+    });
+    setFieldErrors({});
   };
 
   const closeModal = () => {
@@ -413,17 +537,33 @@ const ChildManagement: React.FC<ChildManagementProps> = ({ onBack, onChildCreate
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Name *
                   </label>
-                  <input
-                    type="text"
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    placeholder="Enter child's name"
-                    maxLength={50}
-                    required
-                  />
-                  <div className="text-xs text-gray-500 mt-1">
-                    {formData.name.length}/50 characters
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={formData.name}
+                      onChange={(e) => handleFieldChange('name', e.target.value)}
+                      onBlur={(e) => handleFieldBlur('name', e.target.value)}
+                      className={getFieldClassName('name')}
+                      placeholder="Enter child's name"
+                      maxLength={50}
+                      required
+                    />
+                    {fieldTouched.name && !fieldErrors.name && formData.name && (
+                      <Check className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-green-500" />
+                    )}
+                    {fieldTouched.name && fieldErrors.name && (
+                      <AlertCircle className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-red-500" />
+                    )}
+                  </div>
+                  <div className="flex justify-between items-center mt-1">
+                    <div className="text-xs text-gray-500">
+                      {formData.name.length}/50 characters
+                    </div>
+                    {fieldTouched.name && fieldErrors.name && (
+                      <div className="text-xs text-red-500">
+                        {fieldErrors.name}
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -431,36 +571,66 @@ const ChildManagement: React.FC<ChildManagementProps> = ({ onBack, onChildCreate
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Grade Level *
                   </label>
-                  <select
-                    value={formData.gradeLevel}
-                    onChange={(e) => setFormData({ ...formData, gradeLevel: e.target.value })}
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    required
-                  >
-                    <option value="">Select grade level</option>
-                    {gradeOptions.map((grade) => (
-                      <option key={grade} value={grade}>
-                        {grade}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="relative">
+                    <select
+                      value={formData.gradeLevel}
+                      onChange={(e) => handleFieldChange('gradeLevel', e.target.value)}
+                      onBlur={(e) => handleFieldBlur('gradeLevel', e.target.value)}
+                      className={getFieldClassName('gradeLevel')}
+                      required
+                    >
+                      <option value="">Select grade level</option>
+                      {gradeOptions.map((grade) => (
+                        <option key={grade} value={grade}>
+                          {grade}
+                        </option>
+                      ))}
+                    </select>
+                    {fieldTouched.gradeLevel && !fieldErrors.gradeLevel && formData.gradeLevel && (
+                      <Check className="absolute right-8 top-1/2 transform -translate-y-1/2 w-5 h-5 text-green-500" />
+                    )}
+                    {fieldTouched.gradeLevel && fieldErrors.gradeLevel && (
+                      <AlertCircle className="absolute right-8 top-1/2 transform -translate-y-1/2 w-5 h-5 text-red-500" />
+                    )}
+                  </div>
+                  {fieldTouched.gradeLevel && fieldErrors.gradeLevel && (
+                    <div className="text-xs text-red-500 mt-1">
+                      {fieldErrors.gradeLevel}
+                    </div>
+                  )}
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     School Name *
                   </label>
-                  <input
-                    type="text"
-                    value={formData.schoolName}
-                    onChange={(e) => setFormData({ ...formData, schoolName: e.target.value })}
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    placeholder="Enter school name"
-                    maxLength={100}
-                    required
-                  />
-                  <div className="text-xs text-gray-500 mt-1">
-                    {formData.schoolName.length}/100 characters
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={formData.schoolName}
+                      onChange={(e) => handleFieldChange('schoolName', e.target.value)}
+                      onBlur={(e) => handleFieldBlur('schoolName', e.target.value)}
+                      className={getFieldClassName('schoolName')}
+                      placeholder="Enter school name"
+                      maxLength={100}
+                      required
+                    />
+                    {fieldTouched.schoolName && !fieldErrors.schoolName && formData.schoolName && (
+                      <Check className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-green-500" />
+                    )}
+                    {fieldTouched.schoolName && fieldErrors.schoolName && (
+                      <AlertCircle className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-red-500" />
+                    )}
+                  </div>
+                  <div className="flex justify-between items-center mt-1">
+                    <div className="text-xs text-gray-500">
+                      {formData.schoolName.length}/100 characters
+                    </div>
+                    {fieldTouched.schoolName && fieldErrors.schoolName && (
+                      <div className="text-xs text-red-500">
+                        {fieldErrors.schoolName}
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -468,26 +638,42 @@ const ChildManagement: React.FC<ChildManagementProps> = ({ onBack, onChildCreate
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Birth Date *
                   </label>
-                  <input
-                    type="date"
-                    value={formData.birthDate}
-                    onChange={(e) => setFormData({ ...formData, birthDate: e.target.value })}
-                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    required
-                  />
-                  {formData.birthDate && (
-                    <div className="text-xs text-gray-500 mt-1">
-                      {(() => {
-                        const birthDate = new Date(formData.birthDate);
-                        const today = new Date();
-                        const age = today.getFullYear() - birthDate.getFullYear();
-                        const monthDiff = today.getMonth() - birthDate.getMonth();
-                        const dayDiff = today.getDate() - birthDate.getDate();
-                        const actualAge = (monthDiff < 0 || (monthDiff === 0 && dayDiff < 0)) ? age - 1 : age;
-                        return `Age: ${actualAge} years (valid range: 0-21 years)`;
-                      })()}
-                    </div>
-                  )}
+                  <div className="relative">
+                    <input
+                      type="date"
+                      value={formData.birthDate}
+                      onChange={(e) => handleFieldChange('birthDate', e.target.value)}
+                      onBlur={(e) => handleFieldBlur('birthDate', e.target.value)}
+                      className={getFieldClassName('birthDate')}
+                      required
+                    />
+                    {fieldTouched.birthDate && !fieldErrors.birthDate && formData.birthDate && (
+                      <Check className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-green-500" />
+                    )}
+                    {fieldTouched.birthDate && fieldErrors.birthDate && (
+                      <AlertCircle className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-red-500" />
+                    )}
+                  </div>
+                  <div className="mt-1">
+                    {formData.birthDate && !fieldErrors.birthDate && (
+                      <div className="text-xs text-gray-500">
+                        {(() => {
+                          const birthDate = new Date(formData.birthDate);
+                          const today = new Date();
+                          const age = today.getFullYear() - birthDate.getFullYear();
+                          const monthDiff = today.getMonth() - birthDate.getMonth();
+                          const dayDiff = today.getDate() - birthDate.getDate();
+                          const actualAge = (monthDiff < 0 || (monthDiff === 0 && dayDiff < 0)) ? age - 1 : age;
+                          return `Age: ${actualAge} years (valid range: 0-21 years)`;
+                        })()}
+                      </div>
+                    )}
+                    {fieldTouched.birthDate && fieldErrors.birthDate && (
+                      <div className="text-xs text-red-500">
+                        {fieldErrors.birthDate}
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 <div className="flex space-x-3 mt-6">

@@ -10,7 +10,7 @@ export interface Event {
   title: string;
   description?: string;
   startDate: string; // ISO string
-  endDate?: string | null; // can be null
+  endDate: string;
   startTime?: string | null;
   endTime?: string | null;
   isAllDay: boolean;
@@ -28,7 +28,7 @@ export interface Event {
   updatedAt?: string;
   // Additional fields from API response
   startDateOnly?: string;
-  endDateOnly?: string | null;
+  endDateOnly?: string;
 }
 
 export type EventType = 'SCHOOL_EVENT' | 'ASSIGNMENT_DUE' | 'EXAM' | 'PARENT_MEETING' | 'EXTRACURRICULAR' | 'APPOINTMENT' | 'BIRTHDAY' | 'HOLIDAY' | 'REMINDER' | 'OTHER';

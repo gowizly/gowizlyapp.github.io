@@ -20,7 +20,7 @@ import { requestLogger, logInfo } from "./utils/logger.js";
 dotenv.config();
 
 const app = express();
-
+app.set("trust proxy", 1);
 // Request logging middleware 
 app.use(requestLogger);
 

@@ -3,7 +3,8 @@ import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'r
 import './App.css';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ToastProvider } from './contexts/ToastContext';
-import AuthWrapper from './components/AuthWrapper';
+import LoginPage from './components/LoginPage';
+import SignupPage from './components/SignupPage';
 import FamilyCalendarApp from './components/FamilyCalendar';
 import UserManagement from './components/UserManagement';
 import ForgotPassword from './components/ForgotPassword';
@@ -11,6 +12,7 @@ import ResetPassword from './components/ResetPassword';
 import OAuthCallback from './components/OAuthCallback';
 import ErrorBoundary from './components/ErrorBoundary';
 import EmailVerificationPage from './components/EmailVerification';
+import VerificationResendPage from './components/VerificationResendPage';
 import ToastContainer from './components/ToastContainer';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -85,7 +87,16 @@ function App() {
                 path="/login" 
                 element={
                   <PublicRoute>
-                    <AuthWrapper />
+                    <LoginPage />
+                  </PublicRoute>
+                } 
+              />
+              
+              <Route 
+                path="/signup" 
+                element={
+                  <PublicRoute>
+                    <SignupPage />
                   </PublicRoute>
                 } 
               />
@@ -107,6 +118,15 @@ function App() {
               <Route 
                 path="/verify/:token"
                 element={<EmailVerificationPage />}
+              />
+              
+              <Route 
+                path="/resend-verification" 
+                element={
+                  <PublicRoute>
+                    <VerificationResendPage />
+                  </PublicRoute>
+                } 
               />
               
               <Route 

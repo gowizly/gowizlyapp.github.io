@@ -1,15 +1,29 @@
-import React, { useState } from 'react';
-import { Calendar, User, Lock, Mail, Eye, EyeOff } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Calendar, User, Lock, Mail, Eye, EyeOff, CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
+import { useNavigate } from 'react-router-dom';
+import { 
+  validateSignupForm, 
+  validateUsername, 
+  validateEmail, 
+  validatePassword, 
+  validatePasswordConfirmation,
+  analyzePasswordStrength,
+  getPasswordStrengthColor,
+  getPasswordStrengthText,
+  getPasswordStrengthWidth,
+  PasswordStrength
+} from '../utils/signupValidation';
 
 interface SignupPageProps {
-  onSwitchToLogin: () => void;
+  onSwitchToLogin?: () => void;
 }
 
 const SignupPage: React.FC<SignupPageProps> = ({ onSwitchToLogin }) => {
   const { signup, isLoading } = useAuth();
-  const { showSuccess, showError } = useToast();
+  const { showError } = useToast();
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     username: '',
     email: '',
@@ -20,43 +34,53 @@ const SignupPage: React.FC<SignupPageProps> = ({ onSwitchToLogin }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [fieldTouched, setFieldTouched] = useState<Record<string, boolean>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showTermsModal, setShowTermsModal] = useState(false);
   const [showPrivacyModal, setShowPrivacyModal] = useState(false);
+  const [passwordStrength, setPasswordStrength] = useState<PasswordStrength>({ score: 0, feedback: [], isValid: false });
+
+  // Real-time validation effect
+  useEffect(() => {
+    if (formData.password) {
+      const strength = analyzePasswordStrength(formData.password);
+      setPasswordStrength(strength);
+    } else {
+      setPasswordStrength({ score: 0, feedback: [], isValid: false });
+    }
+  }, [formData.password]);
+
+  const validateField = (field: string, value: string | boolean) => {
+    let fieldErrors: string[] = [];
+
+    switch (field) {
+      case 'username':
+        fieldErrors = validateUsername(value as string).map(e => e.message);
+        break;
+      case 'email':
+        fieldErrors = validateEmail(value as string).map(e => e.message);
+        break;
+      case 'password':
+        fieldErrors = validatePassword(value as string).map(e => e.message);
+        break;
+      case 'confirmPassword':
+        fieldErrors = validatePasswordConfirmation(formData.password, value as string).map(e => e.message);
+        break;
+      case 'acceptTerms':
+        if (!value) fieldErrors = ['You must accept the terms and conditions'];
+        break;
+    }
+
+    setErrors(prev => ({
+      ...prev,
+      [field]: fieldErrors[0] || ''
+    }));
+  };
 
   const validateForm = () => {
-    const newErrors: Record<string, string> = {};
-
-    if (!formData.username.trim()) {
-      newErrors.username = 'Username is required';
-    } else if (formData.username.trim().length < 2) {
-      newErrors.username = 'Username must be at least 2 characters';
-    }
-
-    if (!formData.email.trim()) {
-      newErrors.email = 'Email is required';
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = 'Please enter a valid email address';
-    }
-
-    if (!formData.password) {
-      newErrors.password = 'Password is required';
-    } else if (formData.password.length < 6) {
-      newErrors.password = 'Password must be at least 6 characters';
-    }
-
-    if (!formData.confirmPassword) {
-      newErrors.confirmPassword = 'Please confirm your password';
-    } else if (formData.password !== formData.confirmPassword) {
-      newErrors.confirmPassword = 'Passwords do not match';
-    }
-
-    if (!formData.acceptTerms) {
-      newErrors.acceptTerms = 'You must accept the terms and conditions';
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    const validation = validateSignupForm(formData);
+    setErrors(validation.errors);
+    return validation.isValid;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -69,16 +93,40 @@ const SignupPage: React.FC<SignupPageProps> = ({ onSwitchToLogin }) => {
     setIsSubmitting(true);
     try {
       const result = await signup(formData.username, formData.email, formData.password, formData.acceptTerms);
+      
       if (!result.success) {
-        const errorMessage = result.message || 'Failed to create account. Please try again.';
-        setErrors({ general: errorMessage });
-        showError('Registration Failed', errorMessage);
+        if (result.emailExists) {
+          if (result.emailVerified === false) {
+            // Email exists but not verified - redirect to verification resend page
+            navigate(`/resend-verification?email=${encodeURIComponent(formData.email)}`);
+          } else {
+            // Email exists and is verified - show error and redirect to login page
+            const message = result.message || 'This email is already registered and verified. Please login instead.';
+            showError('Registration Failed', message);
+            
+            // Show a more informative error in the form
+            setErrors({ 
+              general: `${message} Redirecting to login page...`,
+              email: 'This email is already registered and verified'
+            });
+            
+            setTimeout(() => {
+              navigate('/login');
+            }, 3000); // Give user time to read the message
+          }
+        } else if (result.errors) {
+          // Field-specific validation errors from backend
+          setErrors(result.errors);
+          showError('Validation Error', 'Please fix the errors below');
+        } else {
+          // Other errors
+          const errorMessage = result.message || 'Failed to create account. Please try again.';
+          setErrors({ general: errorMessage });
+          showError('Registration Failed', errorMessage);
+        }
       } else if (result.needsVerification) {
-        showSuccess(
-          'Account Created Successfully!', 
-          'Please check your email and click the verification link to activate your account.'
-        );
-        onSwitchToLogin();
+        // Successful signup - redirect to verification sent page
+        navigate(`/resend-verification?email=${encodeURIComponent(formData.email)}&success=true`);
       }
     } catch (error) {
       const errorMessage = 'An error occurred. Please try again.';
@@ -91,11 +139,34 @@ const SignupPage: React.FC<SignupPageProps> = ({ onSwitchToLogin }) => {
 
   const handleInputChange = (field: string, value: string | boolean) => {
     setFormData(prev => ({ ...prev, [field]: value }));
-    // Clear error when user starts typing
-    if (errors[field]) {
-      setErrors(prev => ({ ...prev, [field]: '' }));
+    setFieldTouched(prev => ({ ...prev, [field]: true }));
+    
+    // Real-time validation for touched fields
+    if (fieldTouched[field] || errors[field]) {
+      validateField(field, value);
     }
   };
+
+  const handleBlur = (field: string) => {
+    setFieldTouched(prev => ({ ...prev, [field]: true }));
+    validateField(field, formData[field as keyof typeof formData]);
+  };
+
+  const getFieldValidationIcon = (field: string) => {
+    if (!fieldTouched[field] && !errors[field]) return null;
+    
+    if (errors[field]) {
+      return <XCircle className="w-4 h-4 text-red-500" />;
+    }
+    
+    // Show success for valid fields
+    if (fieldTouched[field]) {
+      return <CheckCircle className="w-4 h-4 text-green-500" />;
+    }
+    
+    return null;
+  };
+
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-900 via-purple-700 to-purple-500 flex items-center justify-center p-4">
@@ -114,51 +185,60 @@ const SignupPage: React.FC<SignupPageProps> = ({ onSwitchToLogin }) => {
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Username</label>
+            <label className="block text-sm text-left font-medium text-gray-700 mb-2">Username</label>
             <div className="relative">
               <User className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
               <input
                 type="text"
                 value={formData.username}
                 onChange={(e) => handleInputChange('username', e.target.value)}
-                className={`w-full pl-10 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent ${
-                  errors.username ? 'border-red-500' : 'border-gray-300'
+                onBlur={() => handleBlur('username')}
+                className={`w-full pl-10 pr-10 py-3 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent ${
+                  errors.username ? 'border-red-500' : fieldTouched.username && !errors.username ? 'border-green-500' : 'border-gray-300'
                 }`}
                 placeholder="Enter your username"
                 disabled={isSubmitting}
               />
+              <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                {getFieldValidationIcon('username')}
+              </div>
             </div>
             {errors.username && <p className="mt-1 text-sm text-red-600">{errors.username}</p>}
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Email Address</label>
+            <label className="block text-sm text-left font-medium text-gray-700 mb-2">Email Address</label>
             <div className="relative">
               <Mail className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
               <input
                 type="email"
                 value={formData.email}
                 onChange={(e) => handleInputChange('email', e.target.value)}
-                className={`w-full pl-10 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent ${
-                  errors.email ? 'border-red-500' : 'border-gray-300'
+                onBlur={() => handleBlur('email')}
+                className={`w-full pl-10 pr-10 py-3 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent ${
+                  errors.email ? 'border-red-500' : fieldTouched.email && !errors.email ? 'border-green-500' : 'border-gray-300'
                 }`}
                 placeholder="Enter your email address"
                 disabled={isSubmitting}
               />
+              <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                {getFieldValidationIcon('email')}
+              </div>
             </div>
             {errors.email && <p className="mt-1 text-sm text-red-600">{errors.email}</p>}
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Password</label>
+            <label className="block text-sm text-left font-medium text-gray-700 mb-2">Password</label>
             <div className="relative">
               <Lock className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
               <input
                 type={showPassword ? 'text' : 'password'}
                 value={formData.password}
                 onChange={(e) => handleInputChange('password', e.target.value)}
+                onBlur={() => handleBlur('password')}
                 className={`w-full pl-10 pr-12 py-3 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent ${
-                  errors.password ? 'border-red-500' : 'border-gray-300'
+                  errors.password ? 'border-red-500' : fieldTouched.password && passwordStrength.isValid ? 'border-green-500' : 'border-gray-300'
                 }`}
                 placeholder="Create a password"
                 disabled={isSubmitting}
@@ -172,19 +252,62 @@ const SignupPage: React.FC<SignupPageProps> = ({ onSwitchToLogin }) => {
                 {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
               </button>
             </div>
-            {errors.password && <p className="mt-1 text-sm text-red-600">{errors.password}</p>}
+            
+            {/* Password Strength Indicator */}
+            {formData.password && (
+              <div className="mt-2">
+                <div className="flex justify-between items-center mb-1">
+                  <span className="text-sm text-gray-600">Password Strength:</span>
+                  <span className={`text-sm font-medium ${getPasswordStrengthColor(passwordStrength.score)}`}>
+                    {getPasswordStrengthText(passwordStrength.score)}
+                  </span>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div 
+                    className={`h-2 rounded-full transition-all duration-300 ${
+                      passwordStrength.score >= 4 ? 'bg-green-500' : 
+                      passwordStrength.score >= 3 ? 'bg-yellow-500' : 
+                      passwordStrength.score >= 2 ? 'bg-orange-500' : 'bg-red-500'
+                    } ${getPasswordStrengthWidth(passwordStrength.score)}`}
+                  ></div>
+                </div>
+              </div>
+            )}
+            
+            {/* Password Requirements */}
+            {formData.password && passwordStrength.feedback.length > 0 && (
+              <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <p className="text-sm font-medium text-blue-800 mb-1">Password Requirements:</p>
+                <ul className="text-sm text-blue-700 space-y-1">
+                  {passwordStrength.feedback.map((feedback, index) => (
+                    <li key={index} className="flex items-center">
+                      <XCircle className="w-3 h-3 text-blue-600 mr-2 flex-shrink-0" />
+                      {feedback}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            
+            {fieldTouched.password && passwordStrength.isValid && (
+              <p className="mt-1 text-sm text-green-600 flex items-center">
+                <CheckCircle className="w-4 h-4 mr-1" />
+                Strong password!
+              </p>
+            )}
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Confirm Password</label>
+            <label className="block text-sm text-left font-medium text-gray-700 mb-2">Confirm Password</label>
             <div className="relative">
               <Lock className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
               <input
                 type={showConfirmPassword ? 'text' : 'password'}
                 value={formData.confirmPassword}
                 onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
+                onBlur={() => handleBlur('confirmPassword')}
                 className={`w-full pl-10 pr-12 py-3 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent ${
-                  errors.confirmPassword ? 'border-red-500' : 'border-gray-300'
+                  errors.confirmPassword ? 'border-red-500' : fieldTouched.confirmPassword && formData.password === formData.confirmPassword && formData.confirmPassword ? 'border-green-500' : 'border-gray-300'
                 }`}
                 placeholder="Confirm your password"
                 disabled={isSubmitting}
@@ -199,6 +322,12 @@ const SignupPage: React.FC<SignupPageProps> = ({ onSwitchToLogin }) => {
               </button>
             </div>
             {errors.confirmPassword && <p className="mt-1 text-sm text-red-600">{errors.confirmPassword}</p>}
+            {fieldTouched.confirmPassword && !errors.confirmPassword && formData.confirmPassword && (
+              <p className="mt-1 text-sm text-green-600 flex items-center">
+                <CheckCircle className="w-4 h-4 mr-1" />
+                Passwords match!
+              </p>
+            )}
           </div>
 
           <div>
@@ -247,7 +376,7 @@ const SignupPage: React.FC<SignupPageProps> = ({ onSwitchToLogin }) => {
               Already have an account?{' '}
               <button
                 type="button"
-                onClick={onSwitchToLogin}
+                onClick={() => onSwitchToLogin ? onSwitchToLogin() : navigate('/login')}
                 className="text-purple-600 hover:text-purple-700 font-semibold"
                 disabled={isSubmitting}
               >
@@ -317,6 +446,7 @@ const SignupPage: React.FC<SignupPageProps> = ({ onSwitchToLogin }) => {
           </div>
         </div>
       )}
+
     </div>
   );
 };
