@@ -25,18 +25,42 @@ export const register = async (req, res) => {
     });
 
     if (existingUser) {
-      if (existingUser.email === email) {
-        logWarn('Registration failed - email already exists', { email });
-        return res.status(400).json({
-          success: false,
-          msg: "Email already registered"
+      // Check if EMAIL already exists
+      if (existingUser.email === email.trim()) {
+        logWarn('Registration failed - email already exists', { 
+          email, 
+          isVerified: existingUser.isVerified 
         });
+        
+        if (!existingUser.isVerified) {
+          // Email exists but not verified
+          return res.status(400).json({
+            success: false,
+            msg: "This email is already registered but not verified",
+            errorMsg: "Email already registered", 
+            isVerified: false,
+            needsVerification: true
+          });
+        } else {
+          // Email exists and is verified
+          return res.status(400).json({
+            success: false,
+            msg: "This email is already registered and verified. Please login instead.",
+            errorMsg: "Email already registered",
+            isVerified: true
+          });
+        }
       }
-      if (existingUser.username === username) {
+      
+      // Check if USERNAME already exists (separate check)
+      if (existingUser.username === username.trim()) {
         logWarn('Registration failed - username already taken', { username });
         return res.status(400).json({
           success: false,
-          msg: "Username already taken"
+          msg: "Username already taken",
+          errors: {
+            username: "Username already taken"
+          }
         });
       }
     }
@@ -50,8 +74,8 @@ export const register = async (req, res) => {
     logDebug('Creating new user in database', { username, email });
     const user = await prisma.user.create({
       data: {
-        username,
-        email,
+        username: username.trim(),
+        email: email.trim(),
         password: hashedPassword
       },
       select: {
@@ -75,11 +99,11 @@ export const register = async (req, res) => {
     const verifyLink = `${process.env.CLIENT_URL}/verify/${verifyToken}`;
     
     // Send verification email with template
-    logDebug('Sending verification email', { email, userId: user.id });
-    const emailTemplate = getVerificationEmailTemplate(username, verifyLink);
-    await sendEmail(email, "Verify Your GoWizly Account", emailTemplate);
+    logDebug('Sending verification email', { email: user.email, userId: user.id });
+    const emailTemplate = getVerificationEmailTemplate(user.username, verifyLink);
+    await sendEmail(user.email, "Verify Your GoWizly Account", emailTemplate);
     
-    logInfo('Verification email sent successfully', { userId: user.id, email });
+    logInfo('Verification email sent successfully', { userId: user.id, email: user.email });
 
     res.status(201).json({
       success: true,
@@ -101,6 +125,7 @@ export const register = async (req, res) => {
     });
   }
 };
+
 
 // Verify Email
 export const verifyEmail = async (req, res) => {
@@ -553,13 +578,16 @@ export const handleGoogleCallback = async (req, res) => {
   }
 };
 
-// Resend verification email
+// Fixed Resend verification email function
 export const resendVerification = async (req, res) => {
   try {
     const { email } = req.body;
 
+    logInfo('Resend verification email request', { email });
+
+    // Find user by email
     const user = await prisma.user.findUnique({
-      where: { email },
+      where: { email: email.trim() },
       select: {
         id: true,
         username: true,
@@ -569,41 +597,57 @@ export const resendVerification = async (req, res) => {
     });
 
     if (!user) {
+      logWarn('Resend verification - user not found', { email });
       return res.status(404).json({
         success: false,
-        msg: "User not found"
+        msg: "User not found with this email address"
       });
     }
 
     if (user.isVerified) {
+      logWarn('Resend verification - email already verified', { userId: user.id, email });
       return res.status(400).json({
         success: false,
         msg: "Email is already verified"
       });
     }
 
-    // Generate new verification token
+    // Generate new verification token (expires in 24 hours)
     const verifyToken = jwt.sign(
       { id: user.id, type: 'verification' },
       process.env.JWT_SECRET,
       { expiresIn: '24h' }
     );
 
-    const verifyLink = `${process.env.CLIENT_URL}/api/auth/verify/${verifyToken}`;
+    // Fix: Correct verification link - should match your verify route
+    const verifyLink = `${process.env.CLIENT_URL}/verify/${verifyToken}`;
     
-    // Send verification email
+    logDebug('Resending verification email', { 
+      userId: user.id, 
+      email: user.email,
+      verifyLink 
+    });
+
+    // Send verification email with template
     const emailTemplate = getVerificationEmailTemplate(user.username, verifyLink);
-    await sendEmail(email, "Verify Your GoWizly Account", emailTemplate);
+    await sendEmail(user.email, "Verify Your GoWizly Account", emailTemplate);
+    
+    logInfo('Verification email resent successfully', { userId: user.id, email: user.email });
 
     res.json({
       success: true,
-      msg: "Verification email sent successfully"
+      msg: "Verification email sent successfully. Please check your email to verify your account.",
+      data: {
+        email: user.email,
+        username: user.username
+      }
     });
+
   } catch (error) {
-    console.error("Resend verification error:", error);
+    logError("Resend verification error", error, { email: req.body?.email });
     res.status(500).json({
       success: false,
-      msg: "Internal server error"
+      msg: "Internal server error. Please try again later."
     });
   }
 };

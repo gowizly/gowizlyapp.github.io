@@ -5,22 +5,13 @@ import {
   addChild,
   updateChild,
   deleteChild,
-  uploadChildPhoto,
   getEventsByChildId,
-  // initiateGoogleClassroomAuth,
-  // handleGoogleClassroomCallback,
-  // getGoogleClassroomData,
-  // disconnectGoogleClassroom
 } from "./child.controller.js";
 import { authenticateToken } from "../middleware/auth.js";
 import { validateChild, validateChildUpdate } from "../middleware/validation.js";
 import { authLimiter } from "../middleware/rateLimiter.js";
-import { createChildPhotoUpload, handleMulterError } from "../utils/uploadConfig.js";
 
 const router = express.Router();
-
-// Configure multer upload for child photos
-const upload = createChildPhotoUpload();
 
 // All routes require authentication
 router.use(authenticateToken);
@@ -35,19 +26,5 @@ router.delete('/:childId', authLimiter, deleteChild); // DELETE /api/children/:c
 
 // Child Specific Event Routes
 router.get('/:childId/events', getEventsByChildId); // GET /api/children/:childId/events?type=EXAM&startDate=2024-03-01&endDate=2024-03-31&limit=50&offset=0
-
-// Photo upload route
-router.post('/:childId/photo', authLimiter, upload.single('photo'), uploadChildPhoto);
-
-// Google Classroom integration routes
-/*
-router.get('/:childId/google-classroom/auth', authLimiter, initiateGoogleClassroomAuth);
-router.get('/google-classroom/callback', handleGoogleClassroomCallback); // No auth required for callback
-router.get('/:childId/google-classroom/data', getGoogleClassroomData);
-router.post('/:childId/google-classroom/disconnect', authLimiter, disconnectGoogleClassroom);
-*/
-
-// Error handling middleware for multer
-router.use(handleMulterError);
 
 export default router;

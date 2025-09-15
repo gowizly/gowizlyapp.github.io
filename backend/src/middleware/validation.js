@@ -39,6 +39,30 @@ export const validateRegistration = [
   validateRequest
 ];
 
+// Validation for resend verification email
+export const validateResendVerification = [
+  body("email")
+    .isEmail()
+    .withMessage("Please provide a valid email address")
+    .normalizeEmail()
+    .trim(),
+    
+  (req, res, next) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        msg: "Validation failed",
+        errors: errors.array().reduce((acc, error) => {
+          acc[error.path] = error.msg;
+          return acc;
+        }, {})
+      });
+    }
+    next();
+  }
+];
+
 // Login validation
 export const validateLogin = [
   body("email")
@@ -136,7 +160,16 @@ export const validateChild = [
         throw new Error("Birth date must be a valid date");
       }
       
+      // Compare dates only (strip time component)
       const today = new Date();
+      const birthDateOnly = new Date(birthDate.getFullYear(), birthDate.getMonth(), birthDate.getDate());
+      const todayOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+      
+      // Birth date must be before today (not today or future)
+      if (birthDateOnly >= todayOnly) {
+        throw new Error("Birth date must be in the past");
+      }
+      
       const age = today.getFullYear() - birthDate.getFullYear();
       const monthDiff = today.getMonth() - birthDate.getMonth();
       const dayDiff = today.getDate() - birthDate.getDate();
@@ -144,14 +177,9 @@ export const validateChild = [
       // Adjust age if birthday hasn't occurred this year
       const actualAge = (monthDiff < 0 || (monthDiff === 0 && dayDiff < 0)) ? age - 1 : age;
       
-      // Validate age range: 0-21 years
-      if (actualAge < 0 || actualAge > 21) {
-        throw new Error("Child must be between 0 and 21 years old");
-      }
-      
-      // Additional check: birth date cannot be in the future
-      if (birthDate > today) {
-        throw new Error("Birth date cannot be in the future");
+      // Validate exclusive age range: must be > 0 and < 21
+      if (actualAge >= 21) {
+        throw new Error("Child must be under 21 years old");
       }
       
       return true;
@@ -198,7 +226,16 @@ export const validateChildUpdate = [
           throw new Error("Birth date must be a valid date");
         }
         
+        // Compare dates only (strip time component)
         const today = new Date();
+        const birthDateOnly = new Date(birthDate.getFullYear(), birthDate.getMonth(), birthDate.getDate());
+        const todayOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+        
+        // Birth date must be before today (not today or future)
+        if (birthDateOnly >= todayOnly) {
+          throw new Error("Birth date must be in the past");
+        }
+        
         const age = today.getFullYear() - birthDate.getFullYear();
         const monthDiff = today.getMonth() - birthDate.getMonth();
         const dayDiff = today.getDate() - birthDate.getDate();
@@ -206,19 +243,13 @@ export const validateChildUpdate = [
         // Adjust age if birthday hasn't occurred this year
         const actualAge = (monthDiff < 0 || (monthDiff === 0 && dayDiff < 0)) ? age - 1 : age;
         
-        // Validate age range: 0-21 years
-        if (actualAge < 0 || actualAge > 21) {
-          throw new Error("Child must be between 0 and 21 years old");
+        // Validate exclusive age range: must be > 0 and < 21
+        if (actualAge >= 21) {
+          throw new Error("Child must be under 21 years old");
         }
       }
       return true;
     }),
-  
-  // body("googleClassroomEmail")
-  //   .optional()
-  //   .isEmail()
-  //   .normalizeEmail()
-  //   .withMessage("Google Classroom email must be a valid email address"),
   
   validateRequest
 ];

@@ -1,17 +1,14 @@
-/// <reference types="react" />
-/// <reference types="react-dom" />
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { childApiService } from '../services/childApi';
-import { Event, EventType, EventPriority, eventApiService } from '../services/eventApi';
-import { calendarApiService, MonthlyCalendarResponse } from '../services/calendarApi';
+import { Event } from '../services/eventApi';
+import { calendarApiService } from '../services/calendarApi';
 import { validateChildForCreation, ValidationError as ChildValidationError, VALID_GRADE_LEVELS } from '../utils/childValidation';
 import Header from './Header';
 import Navigation from './Navigation';
 import CalendarView from './CalendarView';
 import ChildManagement from './ChildManagement';
-import AddEventModal from './AddEventModal';
-import EditEventModal from './EditEventModal';
+import EventModal from './EventModal';
 import AIAssistant from './AIAssistant';
 import { useToast } from '../contexts/ToastContext';
 import { handleAuthFailure } from '../utils/authUtils';
@@ -392,15 +389,16 @@ const FamilyCalendarApp = () => {
       
       {showAddChild && <AddChildModal />}
       {showAddEvent && (
-        <AddEventModal
+        <EventModal
           isOpen={showAddEvent}
           onClose={() => setShowAddEvent(false)}
           children={children}
+          mode="create"
           onEventCreated={handleEventCreated}
         />
       )}
       {showEditEvent && selectedEvent && (
-        <EditEventModal
+        <EventModal
           isOpen={showEditEvent}
           onClose={() => {
             setShowEditEvent(false);
@@ -408,6 +406,7 @@ const FamilyCalendarApp = () => {
           }}
           event={selectedEvent}
           children={children}
+          mode="edit"
           onEventUpdated={handleEventUpdated}
           onEventDeleted={handleEventDeleted}
         />

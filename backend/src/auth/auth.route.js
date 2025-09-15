@@ -21,6 +21,7 @@ import {
   validateRegistration, 
   validateLogin, 
   validateForgotPassword, 
+  validateResendVerification,
   validateResetPassword,
   validateUserProfileUpdate
 } from "../middleware/validation.js";
@@ -36,7 +37,7 @@ const router = express.Router();
 // Username/Password Authentication Routes
 router.post("/register", registrationLimiter, validateRegistration, register);
 router.get("/verify/:token", verifyEmail);
-router.post("/resend-verification", authLimiter, validateForgotPassword, resendVerification);
+router.post("/resend-verification", authLimiter, validateResendVerification, resendVerification);
 router.post("/login", authLimiter, validateLogin, login);
 router.post("/logout", logout);
 

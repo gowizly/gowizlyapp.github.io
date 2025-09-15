@@ -24,6 +24,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ children, onEventsCreated, on
   const [isProcessing, setIsProcessing] = useState(false);
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [isDragOver, setIsDragOver] = useState(false); // New state for drag feedback
   const { showSuccess, showError, showInfo } = useToast();
 
   // Handle email analysis
@@ -106,31 +107,84 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ children, onEventsCreated, on
     }
   };
 
-  // Handle image file selection
+  // Validate and process file
+  const validateAndProcessFile = (file: File) => {
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      showError('Invalid file', 'Please select an image file (JPG, PNG, GIF, etc.)');
+      return false;
+    }
+
+    // Validate file size (max 10MB)
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    if (file.size > maxSize) {
+      showError('File too large', 'Please select an image smaller than 10MB');
+      return false;
+    }
+
+    setSelectedImage(file);
+    
+    // Create preview
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setImagePreview(e.target?.result as string);
+    };
+    reader.readAsDataURL(file);
+    
+    return true;
+  };
+
+  // Handle image file selection via input
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      // Validate file type
-      if (!file.type.startsWith('image/')) {
-        showError('Invalid file', 'Please select an image file (JPG, PNG, GIF, etc.)');
-        return;
-      }
+      validateAndProcessFile(file);
+    }
+  };
 
-      // Validate file size (max 10MB)
-      const maxSize = 10 * 1024 * 1024; // 10MB
-      if (file.size > maxSize) {
-        showError('File too large', 'Please select an image smaller than 10MB');
-        return;
-      }
+  // NEW: Handle drag over event
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!isDragOver) {
+      setIsDragOver(true);
+    }
+  };
 
-      setSelectedImage(file);
-      
-      // Create preview
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        setImagePreview(e.target?.result as string);
-      };
-      reader.readAsDataURL(file);
+  // NEW: Handle drag leave event
+  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    // Only set to false if we're leaving the drop zone entirely
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX;
+    const y = e.clientY;
+    
+    if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
+      setIsDragOver(false);
+    }
+  };
+
+  // NEW: Handle drag enter event
+  const handleDragEnter = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(true);
+  };
+
+  // NEW: Handle drop event
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+
+    if (isProcessing) return;
+
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+      const file = files[0];
+      validateAndProcessFile(file);
     }
   };
 
@@ -269,13 +323,25 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ children, onEventsCreated, on
                   </div>
                 )}
 
-                {/* Image Upload Area */}
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-12 text-center bg-gray-50">
+                {/* Image Upload Area with Drag & Drop */}
+                <div 
+                  className={`border-2 border-dashed rounded-lg p-12 text-center transition-colors ${
+                    isDragOver 
+                      ? 'border-purple-500 bg-purple-50' 
+                      : 'border-gray-300 bg-gray-50'
+                  } ${isProcessing ? 'pointer-events-none opacity-50' : ''}`}
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDragEnter={handleDragEnter}
+                  onDrop={handleDrop}
+                >
                   {!imagePreview ? (
                     <>
-                      <Camera className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                      <h3 className="text-lg font-medium text-gray-900 mb-2">Upload an Image</h3>
-                      <p className="text-gray-600 mb-6">
+                      <Camera className={`w-16 h-16 mx-auto mb-4 ${isDragOver ? 'text-purple-500' : 'text-gray-400'}`} />
+                      <h3 className={`text-lg font-medium mb-2 ${isDragOver ? 'text-purple-700' : 'text-gray-900'}`}>
+                        {isDragOver ? 'Drop your image here' : 'Upload an Image'}
+                      </h3>
+                      <p className={`mb-6 ${isDragOver ? 'text-purple-600' : 'text-gray-600'}`}>
                         Drag and drop or click to select photos of school documents, flyers, or calendars
                       </p>
                       <input
@@ -288,7 +354,11 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ children, onEventsCreated, on
                       />
                       <label
                         htmlFor="image-upload"
-                        className="bg-purple-600 text-white px-8 py-3 rounded-lg hover:bg-purple-700 transition-colors flex items-center mx-auto cursor-pointer font-medium text-lg"
+                        className={`inline-flex items-center px-8 py-3 rounded-lg font-medium text-lg cursor-pointer transition-colors ${
+                          isDragOver 
+                            ? 'bg-purple-700 text-white hover:bg-purple-800' 
+                            : 'bg-purple-600 text-white hover:bg-purple-700'
+                        } ${isProcessing ? 'pointer-events-none' : ''}`}
                       >
                         <Upload className="w-6 h-6 mr-3" />
                         Choose File

@@ -108,8 +108,8 @@ const UserManagement: React.FC<UserManagementProps> = ({ onBack }) => {
               </button>
             </div>
             <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-blue-100 rounded-full flex justify-center">
-                <User className="w-5 h-5 mt-2 text-blue-600" />
+              <div className="w-10 h-10 bg-purple-100 rounded-full flex justify-center">
+                <User className="w-5 h-5 mt-2 text-purple-600" />
               </div>
               <h1 className="text-2xl font-bold text-gray-900">User Management</h1>
             </div>

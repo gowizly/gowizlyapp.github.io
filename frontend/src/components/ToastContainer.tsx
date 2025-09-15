@@ -49,11 +49,11 @@ const ToastContainer: React.FC = () => {
               {getToastIcon(toast.type)}
             </div>
             <div className="ml-3 flex-1">
-              <p className="text-sm font-medium">
+              <p className="text-sm text-left font-medium">
                 {toast.title}
               </p>
               {toast.message && (
-                <p className="text-xs mt-1 opacity-90">
+                <p className="text-xs text-left mt-1 opacity-90">
                   {toast.message}
                 </p>
               )}

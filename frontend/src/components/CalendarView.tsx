@@ -81,18 +81,40 @@ const CalendarView: React.FC<CalendarViewProps> = ({
     return days;
   };
 
+  // Fixed getEventsForDate function - handles timezone issues
   const getEventsForDate = (date: Date) => {
-    const dateStr = date.toISOString().split('T')[0];
+    // Create date string in local timezone, not UTC
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const dateStr = `${year}-${month}-${day}`;
     
-    // Use eventsByDate structure if available, otherwise fallback to filtering events array
+    // Use eventsByDate structure if available
     const dayEvents = eventsByDate[dateStr] || [];
     
-    // Minimal logging for performance
-    if (dayEvents.length > 0) {
-      console.log(`📅 Found ${dayEvents.length} events for ${dateStr}`);
+    // Also filter events array as fallback, using local date comparison
+    const filteredEvents = events.filter(event => {
+      const eventDate = new Date(event.startDate);
+      const eventYear = eventDate.getFullYear();
+      const eventMonth = eventDate.getMonth();
+      const eventDay = eventDate.getDate();
+      
+      return eventYear === date.getFullYear() && 
+             eventMonth === date.getMonth() && 
+             eventDay === date.getDate();
+    });
+    
+    // Combine and deduplicate
+    const allEvents = [...dayEvents, ...filteredEvents];
+    const uniqueEvents = allEvents.filter((event, index, self) => 
+      index === self.findIndex(e => e.id === event.id)
+    );
+    
+    if (uniqueEvents.length > 0) {
+      console.log(`📅 Found ${uniqueEvents.length} events for ${dateStr} (Local: ${date.toLocaleDateString()})`);
     }
     
-    return dayEvents;
+    return uniqueEvents;
   };
 
   const navigateMonth = (direction: number) => {
@@ -283,7 +305,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({
       </div>
 
       {/* Debug Panel - Show event locations when no events in current month */}
-      {events.length > 0 && eventsInCurrentMonth.length === 0 && (
+      {/* {events.length > 0 && eventsInCurrentMonth.length === 0 && (
         <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
           <h3 className="text-lg font-semibold text-yellow-800 mb-3">
             📅 Events Available ({events.length} total)
@@ -320,7 +342,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({
             </div>
           )}
         </div>
-      )}
+      )} */}
 
       {/* Event Type Legend */}
       <EventTypeLegend />

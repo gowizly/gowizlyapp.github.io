@@ -5,8 +5,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 
 interface LoginPageProps {
-  onSwitchToSignup: () => void;
-  onForgotPassword: () => void;
+  onSwitchToSignup?: () => void;
+  onForgotPassword?: () => void;
 }
 
 const LoginPage: React.FC<LoginPageProps> = ({ onSwitchToSignup, onForgotPassword }) => {
@@ -128,7 +128,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onSwitchToSignup, onForgotPasswor
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Email Address</label>
+            <label className="block text-left text-sm font-medium text-gray-700 mb-2">Email Address</label>
             <div className="relative">
               <User className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
               <input
@@ -146,7 +146,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onSwitchToSignup, onForgotPasswor
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Password</label>
+            <label className="block text-left text-sm font-medium text-gray-700 mb-2">Password</label>
             <div className="relative">
               <Lock className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
               <input
@@ -224,12 +224,12 @@ const LoginPage: React.FC<LoginPageProps> = ({ onSwitchToSignup, onForgotPasswor
             Continue with Google
           </button>
 
-          <div className="text-center">
+          <div className="text-center space-y-2">
             <p className="text-gray-600">
               Don't have an account?{' '}
               <button
                 type="button"
-                onClick={onSwitchToSignup}
+                onClick={() => onSwitchToSignup ? onSwitchToSignup() : navigate('/signup')}
                 className="text-purple-600 hover:text-purple-700 font-semibold"
                 disabled={isSubmitting}
               >
