@@ -1,17 +1,17 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useAuth } from '../contexts/AuthContext';
-import { childApiService } from '../services/childApi';
-import { Event } from '../services/eventApi';
-import { calendarApiService } from '../services/calendarApi';
-import { validateChildForCreation, ValidationError as ChildValidationError, VALID_GRADE_LEVELS } from '../utils/childValidation';
-import Header from './Header';
-import Navigation from './Navigation';
+import { useAuth } from '../../contexts/AuthContext';
+import { childApiService } from '../../services/childApi';
+import { Event } from '../../services/eventApi';
+import { calendarApiService } from '../../services/calendarApi';
+import { validateChildForCreation, ValidationError as ChildValidationError, VALID_GRADE_LEVELS } from '../../utils/childValidation';
+import Header from '../common/Header';
+import Navigation from '../common/Navigation';
 import CalendarView from './CalendarView';
-import ChildManagement from './ChildManagement';
+import ChildManagement from '../child/ChildManagement';
 import EventModal from './EventModal';
-import AIAssistant from './AIAssistant';
-import { useToast } from '../contexts/ToastContext';
-import { handleAuthFailure } from '../utils/authUtils';
+import AIAssistant from '../assistant/AIAssistant';
+import { useToast } from '../../contexts/ToastContext';
+import { handleAuthFailure } from '../../utils/authUtils';
 
 // Update the local Child interface to match the API
 interface LocalChild {

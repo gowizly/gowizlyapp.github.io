@@ -1,13 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { CheckCircle, AlertCircle, Loader } from 'lucide-react';
-import { useAuth } from '../contexts/AuthContext';
-import { API_BASE_URL } from '../config/environment';
+import { useAuth } from '../../contexts/AuthContext';
 
 const OAuthCallback: React.FC = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { setToken, setUser, setIsEmailVerified } = useAuth();
+  const { handleOAuthCallback } = useAuth();
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [message, setMessage] = useState('Processing authentication...');
 
@@ -39,66 +38,24 @@ const OAuthCallback: React.FC = () => {
           return;
         }
 
-        // Validate token with backend and get user data
-        console.log('🔄 Validating OAuth token...');
-        const meEndpoint = `${API_BASE_URL}/api/auth/me`;
-        console.log('🌐 Making request to:', meEndpoint);
-        
-        const response = await fetch(meEndpoint, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        });
+        // Process OAuth callback using AuthContext
+        console.log('🔄 Processing OAuth callback...');
+        const success = await handleOAuthCallback(token);
 
-        console.log('📡 Token validation response:', response.status, response.statusText);
+        if (success) {
+          console.log('✅ OAuth authentication successful');
+          setStatus('success');
+          setMessage('Authentication successful! Redirecting to dashboard...');
 
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error('❌ Token validation failed:', {
-            status: response.status,
-            statusText: response.statusText,
-            errorText: errorText.substring(0, 200)
-          });
+          // Redirect to home page after success
+          setTimeout(() => {
+            navigate('/', { replace: true });
+          }, 2000);
+        } else {
+          console.error('❌ OAuth callback processing failed');
           setStatus('error');
-          setMessage('Authentication token validation failed');
-          return;
+          setMessage('Failed to complete authentication');
         }
-
-        const responseText = await response.text();
-        console.log('📡 Raw response:', responseText.substring(0, 200));
-        
-        let userData;
-        try {
-          userData = JSON.parse(responseText);
-        } catch (parseError) {
-          console.error('❌ JSON parse error:', parseError);
-          console.error('❌ Response was:', responseText.substring(0, 500));
-          setStatus('error');
-          setMessage('Invalid response format from server');
-          return;
-        }
-        console.log('✅ OAuth user data received:', userData);
-
-        // Set authentication state
-        console.log('🔄 Setting OAuth authentication state...');
-        setIsEmailVerified(true); // Set this first
-        setToken(token);
-        setUser({
-          id: (userData.id || userData.userId || 'temp_id').toString(),
-          name: userData.username || userData.name || userData.email?.split('@')[0] || 'User',
-          email: userData.email,
-          username: userData.username
-        });
-        console.log('✅ OAuth authentication state set');
-
-        setStatus('success');
-        setMessage('Authentication successful! Redirecting...');
-
-        // Redirect to home page after success
-        setTimeout(() => {
-          navigate('/', { replace: true });
-        }, 2000);
 
       } catch (error) {
         console.error('❌ OAuth callback error:', error);
@@ -108,7 +65,7 @@ const OAuthCallback: React.FC = () => {
     };
 
     handleCallback();
-  }, [searchParams, navigate, setToken, setUser, setIsEmailVerified]);
+  }, [searchParams, navigate, handleOAuthCallback]);
 
   const getErrorMessage = (error: string): string => {
     switch (error) {

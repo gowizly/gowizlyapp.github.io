@@ -6,14 +6,11 @@ import {
   forgotPassword, 
   resetPassword,
   validateResetToken,
-  logout,
   getCurrentUser,
   resendVerification,
   handleOAuthCallback,
   handleGoogleCallback,
   updateUserProfile,
-  getUserProfile,
-  patchUserProfile,
   deleteUserAccount
 } from "./auth.controller.js";
 import passport from "passport";
@@ -39,22 +36,19 @@ router.post("/register", registrationLimiter, validateRegistration, register);
 router.get("/verify/:token", verifyEmail);
 router.post("/resend-verification", authLimiter, validateResendVerification, resendVerification);
 router.post("/login", authLimiter, validateLogin, login);
-router.post("/logout", logout);
 
 // Password Reset Routes
 router.post("/forgot-password", resetPasswordLimiter, validateForgotPassword, forgotPassword);
-router.get("/reset-password/:token", validateResetToken); // Validate reset token
+router.get("/reset-password/:token", validateResetToken);
 router.post("/reset-password/:token", authLimiter, validateResetPassword, resetPassword);
 
 // Protected Routes - User Profile Management
-router.get("/profile", authenticateToken, getUserProfile); // GET /api/auth/profile
-router.patch("/profile", authenticateToken, authLimiter, validateUserProfileUpdate, patchUserProfile); // PATCH /api/auth/profile  
-router.delete("/account", authenticateToken, authLimiter, deleteUserAccount); // DELETE /api/auth/account
+router.get("/profile", authenticateToken, getCurrentUser);
+router.patch("/profile", authenticateToken, authLimiter, validateUserProfileUpdate, updateUserProfile); 
+router.delete("/account", authenticateToken, authLimiter, deleteUserAccount);
 
 // Legacy routes (keep for backward compatibility)
 router.get("/me", authenticateToken, getCurrentUser);
-router.put("/me", authenticateToken, authLimiter, validateUserProfileUpdate, updateUserProfile);
-router.patch("/me", authenticateToken, authLimiter, validateUserProfileUpdate, updateUserProfile);
 
 // Development/Debug Routes (remove in production)
 if (process.env.NODE_ENV === 'development') {
@@ -75,9 +69,28 @@ if (process.env.NODE_ENV === 'development') {
 // Google OAuth Routes
 router.get("/google", passport.authenticate("google", { scope: ["profile", "email"] }));
 
-// Google OAuth callback - handles the response from Google
+// Updated Google OAuth callback with consistent JSON responses
 router.get("/google/callback", 
-  passport.authenticate("google", { failureRedirect: `${process.env.CLIENT_URL}/auth/error?error=oauth_failed` }),
+  (req, res, next) => {
+    passport.authenticate("google", (err, user, info) => {
+      if (err) {
+        logError("Google OAuth authentication error", err);
+        return res.status(500).json({
+          success: false,
+          msg: "Authentication error"
+        });
+      }
+      if (!user) {
+        logWarn("Google OAuth authentication failed", { info });
+        return res.status(400).json({
+          success: false,
+          msg: "Authentication failed"
+        });
+      }
+      req.user = user;
+      next();
+    })(req, res, next);
+  },
   handleGoogleCallback
 );
 

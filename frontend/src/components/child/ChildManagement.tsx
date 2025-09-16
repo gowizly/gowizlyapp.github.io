@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Users, Plus, Edit, Trash2, Save, X, User, AlertCircle, CheckCircle, Loader, ArrowLeft, Check } from 'lucide-react';
-import { Child, childApiService } from '../services/childApi';
-import { validateChildForCreation, validateChildForUpdate, ValidationError, VALID_GRADE_LEVELS, validateName, validateGradeLevel, validateSchoolName, validateBirthDate } from '../utils/childValidation';
-import { Event, eventApiService } from '../services/eventApi';
+import { Child, childApiService } from '../../services/childApi';
+import { validateChildForCreation, validateChildForUpdate, ValidationError, VALID_GRADE_LEVELS, validateName, validateGradeLevel, validateSchoolName, validateBirthDate } from '../../utils/childValidation';
+import { Event, eventApiService } from '../../services/eventApi';
 
 const eventTypes = {
   ASSIGNMENT_DUE: { color: 'bg-purple-500', label: 'Assignment Due' },
@@ -443,9 +443,9 @@ const ChildManagement: React.FC<ChildManagementProps> = ({ onBack, onChildCreate
                       <User className="w-6 h-6 text-purple-600" />
                     </div>
                     <div>
-                      <h3 className="text-lg font-semibold text-gray-800">{child.name}</h3>
-                      <p className="text-sm text-gray-600">{child.gradeLevel}</p>
-                      <p className="text-sm text-gray-600">{child.schoolName}</p>
+                      <h3 className="text-lg text-left font-semibold text-gray-800">{child.name}</h3>
+                      <p className="text-sm text-left text-gray-600">{child.gradeLevel}</p>
+                      <p className="text-sm text-left text-gray-600">{child.schoolName}</p>
                     </div>
                   </div>
                   <div className="flex space-x-2">

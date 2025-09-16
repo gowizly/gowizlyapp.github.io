@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, Lock, CheckCircle, AlertCircle, Loader } from 'lucide-react';
-import { API_BASE_URL } from '../config/environment';
-
+import { useAuth } from '../../contexts/AuthContext';
+import { useToast } from '../../contexts/ToastContext';
 interface ResetPasswordState {
   password: string;
   confirmPassword: string;
@@ -19,6 +19,8 @@ interface ValidationErrors {
 const ResetPassword: React.FC = () => {
   const { token } = useParams<{ token: string }>();
   const navigate = useNavigate();
+  const { resetPassword, validateResetToken, isLoading } = useAuth();
+  const { showSuccess, showError } = useToast();
   
   const [formData, setFormData] = useState<ResetPasswordState>({
     password: '',
@@ -42,32 +44,34 @@ const ResetPassword: React.FC = () => {
 
   // Validate token on component mount
   useEffect(() => {
-    validateResetToken();
+    handleValidateResetToken();
   }, [token]);
 
-  const validateResetToken = async () => {
+  const handleValidateResetToken = async () => {
+    if (!token) {
+      setTokenValidation({
+        isValid: false,
+        isLoading: false,
+        userEmail: '',
+        userName: ''
+      });
+      return;
+    }
+
     try {
       console.log('🔐 Validating reset token:', token?.substring(0, 10) + '...');
       
-      const response = await fetch(`${API_BASE_URL}/api/auth/reset-password/${token}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      });
+      const result = await validateResetToken(token);
 
-      const data = await response.json();
-      console.log('🔐 Token validation response:', data);
-
-      if (response.ok && data.success) {
+      if (result.isValid) {
         setTokenValidation({
           isValid: true,
           isLoading: false,
-          userEmail: data.data?.email || '',
-          userName: data.data?.username || ''
+          userEmail: result.userEmail || '',
+          userName: result.userName || ''
         });
       } else {
-        console.error('❌ Invalid reset token:', data.msg);
+        console.error('❌ Invalid reset token:', result.message);
         setTokenValidation({
           isValid: false,
           isLoading: false,
@@ -129,20 +133,9 @@ const ResetPassword: React.FC = () => {
     try {
       console.log('🔐 Submitting password reset...');
       
-      const response = await fetch(`${API_BASE_URL}/api/auth/reset-password/${token}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          password: formData.password
-        })
-      });
+      const success = await resetPassword(token!, formData.password);
 
-      const data = await response.json();
-      console.log('🔐 Password reset response:', data);
-
-      if (response.ok && data.success) {
+      if (success) {
         console.log('✅ Password reset successful');
         setResetState(prev => ({
           ...prev,
@@ -150,6 +143,11 @@ const ResetPassword: React.FC = () => {
           success: true,
           errors: {}
         }));
+        
+        showSuccess(
+          'Password Reset Successful!',
+          'Your password has been updated. You can now log in with your new password.'
+        );
         
         // Redirect to login after 3 seconds
         setTimeout(() => {
@@ -160,20 +158,24 @@ const ResetPassword: React.FC = () => {
           });
         }, 3000);
       } else {
-        console.error('❌ Password reset failed:', data.msg);
+        console.error('❌ Password reset failed');
+        const errorMessage = 'Password reset failed. The link may be expired or invalid.';
         setResetState(prev => ({
           ...prev,
           isSubmitting: false,
-          errors: { general: data.msg || 'Password reset failed' }
+          errors: { general: errorMessage }
         }));
+        showError('Password Reset Failed', errorMessage);
       }
     } catch (error) {
       console.error('❌ Password reset error:', error);
+      const errorMessage = 'Network error. Please try again.';
       setResetState(prev => ({
         ...prev,
         isSubmitting: false,
-        errors: { general: 'Network error. Please try again.' }
+        errors: { general: errorMessage }
       }));
+      showError('Network Error', errorMessage);
     }
   };
 
@@ -326,10 +328,10 @@ const ResetPassword: React.FC = () => {
 
           <button
             type="submit"
-            disabled={resetState.isSubmitting}
+            disabled={resetState.isSubmitting || isLoading}
             className="w-full bg-purple-600 text-white py-3 rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
           >
-            {resetState.isSubmitting ? (
+            {resetState.isSubmitting || isLoading ? (
               <>
                 <Loader className="w-5 h-5 animate-spin mr-2" />
                 Resetting Password...

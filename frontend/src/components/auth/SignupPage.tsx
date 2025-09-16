@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, User, Lock, Mail, Eye, EyeOff, CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
-import { useAuth } from '../contexts/AuthContext';
-import { useToast } from '../contexts/ToastContext';
+import { Calendar, User, Lock, Mail, Eye, EyeOff, CheckCircle, XCircle, AlertTriangle, X } from 'lucide-react';
+import { useAuth } from '../../contexts/AuthContext';
+import { useToast } from '../../contexts/ToastContext';
 import { useNavigate } from 'react-router-dom';
 import { 
   validateSignupForm, 
@@ -14,7 +14,7 @@ import {
   getPasswordStrengthText,
   getPasswordStrengthWidth,
   PasswordStrength
-} from '../utils/signupValidation';
+} from '../../utils/signupValidation';
 
 interface SignupPageProps {
   onSwitchToLogin?: () => void;
@@ -253,30 +253,9 @@ const SignupPage: React.FC<SignupPageProps> = ({ onSwitchToLogin }) => {
               </button>
             </div>
             
-            {/* Password Strength Indicator */}
-            {formData.password && (
-              <div className="mt-2">
-                <div className="flex justify-between items-center mb-1">
-                  <span className="text-sm text-gray-600">Password Strength:</span>
-                  <span className={`text-sm font-medium ${getPasswordStrengthColor(passwordStrength.score)}`}>
-                    {getPasswordStrengthText(passwordStrength.score)}
-                  </span>
-                </div>
-                <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div 
-                    className={`h-2 rounded-full transition-all duration-300 ${
-                      passwordStrength.score >= 4 ? 'bg-green-500' : 
-                      passwordStrength.score >= 3 ? 'bg-yellow-500' : 
-                      passwordStrength.score >= 2 ? 'bg-orange-500' : 'bg-red-500'
-                    } ${getPasswordStrengthWidth(passwordStrength.score)}`}
-                  ></div>
-                </div>
-              </div>
-            )}
-            
             {/* Password Requirements */}
             {formData.password && passwordStrength.feedback.length > 0 && (
-              <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="mt-2 p-3 bg-red-50 border border-red-200 rounded-lg">
                 <p className="text-sm font-medium text-blue-800 mb-1">Password Requirements:</p>
                 <ul className="text-sm text-blue-700 space-y-1">
                   {passwordStrength.feedback.map((feedback, index) => (
@@ -397,7 +376,7 @@ const SignupPage: React.FC<SignupPageProps> = ({ onSwitchToLogin }) => {
                 onClick={() => setShowTermsModal(false)}
                 className="text-white hover:bg-purple-700 rounded-lg p-2 transition-colors"
               >
-                ×
+                <X className="w-5 h-5" />
               </button>
             </div>
             <div className="p-6">
@@ -427,7 +406,7 @@ const SignupPage: React.FC<SignupPageProps> = ({ onSwitchToLogin }) => {
                 onClick={() => setShowPrivacyModal(false)}
                 className="text-white hover:bg-purple-700 rounded-lg p-2 transition-colors"
               >
-                ×
+                <X className="w-5 h-5" />
               </button>
             </div>
             <div className="p-6">

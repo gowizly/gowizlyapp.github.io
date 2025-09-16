@@ -29,8 +29,10 @@ interface AuthContextType {
   verifyEmail: (token: string) => Promise<boolean>;
   resendVerification: (email: string) => Promise<{ success: boolean; message?: string }>;
   requestPasswordReset: (email: string) => Promise<boolean>;
+  validateResetToken: (token: string) => Promise<{ isValid: boolean; userEmail?: string; userName?: string; message?: string }>;
   resetPassword: (token: string, newPassword: string) => Promise<boolean>;
   googleLogin: () => Promise<boolean>;
+  handleOAuthCallback: (token: string) => Promise<boolean>;
   updateProfile: (username: string, address: string) => Promise<boolean>;
   deleteAccount: () => Promise<boolean>;
   setUser: (user: User | null) => void;
@@ -63,7 +65,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     });
   }, [user, token, isEmailVerified, isAuthenticated]);
 
-  // Fetch user profile from API
+ // Fixed fetchUserProfile function in AuthContext
 const fetchUserProfile = async (token: string): Promise<User | null> => {
   try {
     console.log('👤 Fetching user profile with token:', token.substring(0, 20) + '...');
@@ -84,18 +86,16 @@ const fetchUserProfile = async (token: string): Promise<User | null> => {
       throw new Error(`Failed to fetch user profile: ${response.status}`);
     }
 
-    const data = response.data.data; // Note: accessing data.data since backend returns { success: true, data: { user: {...} } }
-    console.log('👤 User profile data:', data);
-
-    // Handle the nested structure from backend
-    const userData = data.user || data;
+    // Backend returns: { success: true, msg: "...", data: { user: {...} } }
+    const userData = response.data.data.user;
+    console.log('👤 User profile data:', userData);
     
     return {
       id: userData.id.toString(),
       name: userData.username || userData.name || userData.email.split('@')[0],
       email: userData.email,
       username: userData.username,
-      address: userData.address,
+      address: userData.address || '',
       isVerified: userData.isVerified,
       createdAt: userData.createdAt,
       updatedAt: userData.updatedAt,
@@ -351,21 +351,28 @@ const login = async (email: string, password: string, rememberMe: boolean = fals
           errorMsg.toLowerCase().includes('already registered') ||
           errorMsg.toLowerCase().includes('email exists')
         )) {
-          // Check if user exists but is not verified (backend should indicate this)
-          if (errorData?.isVerified === false || errorData?.needsVerification === true) {
+          // Backend now explicitly sends isVerified and needsVerification flags
+          if (errorData?.isVerified === false && errorData?.needsVerification === true) {
             return { 
               success: false, 
               emailExists: true, 
               emailVerified: false,
-              message: 'This email is already registered but not verified. Would you like us to resend the verification email?' 
+              message: errorData.msg || 'This email is already registered but not verified. Would you like us to resend the verification email?' 
+            };
+          } else if (errorData?.isVerified === true) {
+            return { 
+              success: false, 
+              emailExists: true,
+              emailVerified: true,
+              message: errorData.msg || 'This email is already registered and verified. Please login instead.' 
             };
           }
-          // Email exists and is verified
+          // Fallback for older backend responses
           return { 
             success: false, 
             emailExists: true,
             emailVerified: true,
-            message: 'This email is already registered and verified. Please login instead.' 
+            message: errorData.msg || 'This email is already registered. Please login instead.' 
           };
         }
         
@@ -430,13 +437,19 @@ const updateProfile = async (username: string, address: string): Promise<boolean
     const data = response.data;
     console.log('✅ Profile updated successfully', data);
     
-    // Update user state with new profile data
+    // Backend returns: { success: true, msg: "Profile updated successfully", data: { user: {...} } }
     if (data.data?.user && user) {
       const updatedUser = {
         ...user,
-        ...data.data.user,
-        id: data.data.user.id.toString(), // Ensure ID is string
-        name: data.data.user.username || user.name // Use username as name
+        id: data.data.user.id.toString(),
+        name: data.data.user.username || user.name,
+        email: data.data.user.email,
+        username: data.data.user.username,
+        address: data.data.user.address || '',
+        isVerified: data.data.user.isVerified,
+        createdAt: data.data.user.createdAt,
+        updatedAt: data.data.user.updatedAt,
+        childrenCount: data.data.user.childrenCount || 0
       } as User;
       
       setUser(updatedUser);
@@ -480,17 +493,17 @@ const updateProfile = async (username: string, address: string): Promise<boolean
       console.log('📡 Account deletion response status:', response.status);
       const data = response.data;
 
-      if (data.success) {
-        console.log('✅ Account deleted successfully');
-        
-        // Logout user after successful account deletion
-        logout();
-        
-        return true;
-      } else {
-        console.error('❌ Account deletion failed:', data.msg || 'Unknown error');
+      if (!data || !data.success) {
+        console.error('❌ Account deletion failed:', data?.msg || 'Unknown error');
         return false;
       }
+
+      console.log('✅ Account deleted successfully');
+      
+      // Logout user after successful account deletion
+      logout();
+      
+      return true;
     } catch (error: any) {
       console.error('❌ Error deleting account:', error);
       
@@ -605,6 +618,42 @@ const updateProfile = async (username: string, address: string): Promise<boolean
     }
   };
 
+  const validateResetToken = async (resetToken: string): Promise<{ isValid: boolean; userEmail?: string; userName?: string; message?: string }> => {
+    try {
+      setIsLoading(true);
+      
+      const response = await axios.get(`${AUTH_BASE_URL}/reset-password/${resetToken}`, {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const data = response.data;
+
+      if (!data || !data.success) {
+        return { 
+          isValid: false, 
+          message: data?.msg || 'Invalid or expired reset token' 
+        };
+      }
+
+      return { 
+        isValid: true, 
+        userEmail: data.data?.email,
+        userName: data.data?.username,
+        message: data.msg 
+      };
+    } catch (error) {
+      console.error('Token validation error:', error);
+      return { 
+        isValid: false, 
+        message: 'Failed to validate reset token' 
+      };
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const resetPassword = async (resetToken: string, newPassword: string): Promise<boolean> => {
     try {
       setIsLoading(true);
@@ -653,6 +702,41 @@ const updateProfile = async (username: string, address: string): Promise<boolean
     }
   };
 
+  const handleOAuthCallback = async (oauthToken: string): Promise<boolean> => {
+    try {
+      setIsLoading(true);
+      console.log('🔐 Processing OAuth callback with token:', oauthToken.substring(0, 20) + '...');
+      
+      // Set the token first
+      setToken(oauthToken);
+      setIsEmailVerified(true); // OAuth users are verified by default
+      
+      // Fetch user data with the provided token
+      const userData = await fetchUserProfile(oauthToken);
+      
+      if (userData) {
+        console.log('✅ OAuth authentication successful');
+        setUser(userData);
+        return true;
+      } else {
+        console.error('❌ Failed to fetch user data for OAuth token');
+        // Clear the token if user data fetch failed
+        setToken(null);
+        setIsEmailVerified(false);
+        return false;
+      }
+    } catch (error) {
+      console.error('❌ OAuth callback error:', error);
+      // Clear auth state on error
+      setToken(null);
+      setUser(null);
+      setIsEmailVerified(false);
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const value: AuthContextType = {
     user,
     token,
@@ -665,8 +749,10 @@ const updateProfile = async (username: string, address: string): Promise<boolean
     verifyEmail,
     resendVerification,
     requestPasswordReset,
+    validateResetToken,
     resetPassword,
     googleLogin,
+    handleOAuthCallback,
     updateProfile,
     deleteAccount,
     setUser,

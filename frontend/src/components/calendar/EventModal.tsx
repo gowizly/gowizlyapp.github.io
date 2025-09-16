@@ -1,6 +1,6 @@
 import React, { useCallback, useState, useEffect } from 'react';
 import { X, Trash2, Check, AlertCircle } from 'lucide-react';
-import { Event, EventType, EventPriority, eventApiService } from '../services/eventApi';
+import { Event, EventType, EventPriority, eventApiService } from '../../services/eventApi';
 import { 
   validateEventForCreation, 
   ValidationError, 
@@ -13,8 +13,8 @@ import {
   validateChildId,
   validateStartTime,
   validateEndTime
-} from '../utils/eventValidation';
-import { useToast } from '../contexts/ToastContext';
+} from '../../utils/eventValidation';
+import { useToast } from '../../contexts/ToastContext';
 
 // Define static objects outside component to prevent re-creation on every render
 const EVENT_TYPE_OPTIONS = {

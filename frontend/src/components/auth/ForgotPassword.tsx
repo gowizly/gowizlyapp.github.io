@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Mail, ArrowLeft, CheckCircle, Loader } from 'lucide-react';
-import { API_BASE_URL } from '../config/environment';
-import { useToast } from '../contexts/ToastContext';
-
+import { useAuth } from '../../contexts/AuthContext';
+import { useToast } from '../../contexts/ToastContext';
 interface ForgotPasswordState {
   email: string;
   isSubmitting: boolean;
@@ -13,6 +12,7 @@ interface ForgotPasswordState {
 
 const ForgotPassword: React.FC = () => {
   const navigate = useNavigate();
+  const { requestPasswordReset, isLoading } = useAuth();
   const { showSuccess, showError } = useToast();
   const [formData, setFormData] = useState<ForgotPasswordState>({
     email: '',
@@ -48,20 +48,9 @@ const ForgotPassword: React.FC = () => {
     try {
       console.log('📧 Sending forgot password request for:', formData.email);
       
-      const response = await fetch(`${API_BASE_URL}/api/auth/forgot-password`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          email: formData.email
-        })
-      });
+      const success = await requestPasswordReset(formData.email);
 
-      const data = await response.json();
-      console.log('📧 Forgot password response:', data);
-
-      if (response.ok && data.success) {
+      if (success) {
         console.log('✅ Forgot password request successful');
         setFormData(prev => ({
           ...prev,
@@ -74,8 +63,8 @@ const ForgotPassword: React.FC = () => {
           'Please check your email for password reset instructions.'
         );
       } else {
-        console.error('❌ Forgot password request failed:', data.msg);
-        const errorMessage = data.msg || 'Failed to send reset email';
+        console.error('❌ Forgot password request failed');
+        const errorMessage = 'Failed to send reset email. Please try again.';
         setFormData(prev => ({
           ...prev,
           isSubmitting: false,
@@ -165,10 +154,10 @@ const ForgotPassword: React.FC = () => {
 
           <button
             type="submit"
-            disabled={formData.isSubmitting}
+            disabled={formData.isSubmitting || isLoading}
             className="w-full bg-purple-600 text-white py-3 rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
           >
-            {formData.isSubmitting ? (
+            {formData.isSubmitting || isLoading ? (
               <>
                 <Loader className="w-5 h-5 animate-spin mr-2" />
                 Sending Reset Link...
