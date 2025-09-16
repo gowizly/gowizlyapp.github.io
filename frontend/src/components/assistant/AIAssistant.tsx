@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Mail, Camera, Upload, Bot, Loader2, ArrowLeft } from 'lucide-react';
-import { aiAssistantApiService } from '../services/aiAssistantApi';
-import { useToast } from '../contexts/ToastContext';
+import { aiAssistantApiService } from '../../services/aiAssistantApi';
+import { useToast } from '../../contexts/ToastContext';
 
 interface Child {
   id: number | null;

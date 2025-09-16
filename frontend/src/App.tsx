@@ -3,17 +3,17 @@ import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'r
 import './App.css';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ToastProvider } from './contexts/ToastContext';
-import LoginPage from './components/LoginPage';
-import SignupPage from './components/SignupPage';
-import FamilyCalendarApp from './components/FamilyCalendar';
-import UserManagement from './components/UserManagement';
-import ForgotPassword from './components/ForgotPassword';
-import ResetPassword from './components/ResetPassword';
-import OAuthCallback from './components/OAuthCallback';
-import ErrorBoundary from './components/ErrorBoundary';
-import EmailVerificationPage from './components/EmailVerification';
-import VerificationResendPage from './components/VerificationResendPage';
-import ToastContainer from './components/ToastContainer';
+import LoginPage from './components/auth/LoginPage';
+import SignupPage from './components/auth/SignupPage';
+import FamilyCalendarApp from './components/calendar/FamilyCalendar';
+import UserManagement from './components/auth/UserManagement';
+import ForgotPassword from './components/auth/ForgotPassword';
+import ResetPassword from './components/auth/ResetPassword';
+import OAuthCallback from './components/auth/OAuthCallback';
+import ErrorBoundary from './components/common/ErrorBoundary';
+import EmailVerificationPage from './components/auth/EmailVerification';
+import VerificationResendPage from './components/auth/VerificationResendPage';
+import ToastContainer from './components/common/ToastContainer';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated, isLoading } = useAuth();

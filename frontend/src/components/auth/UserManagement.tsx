@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, User, Mail, MapPin, Trash2, Edit3, Save, AlertTriangle } from 'lucide-react';
-import { useAuth } from '../contexts/AuthContext';
-import { useToast } from '../contexts/ToastContext';
-import Header from './Header';
+import { useAuth } from '../../contexts/AuthContext';
+import { useToast } from '../../contexts/ToastContext';
+import Header from '../common/Header';
 
 interface UserManagementProps {
   onBack: () => void;
@@ -69,8 +69,6 @@ const UserManagement: React.FC<UserManagementProps> = ({ onBack }) => {
     setIsLoading(true);
     try {
       console.log('🗑️ Deleting user account...');
-      showWarning('Account Deletion', 'Deleting your account...');
-
       const success = await deleteAccount();
 
       if (success) {

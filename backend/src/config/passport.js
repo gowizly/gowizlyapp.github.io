@@ -4,7 +4,18 @@ import prisma from "./db.js";
 
 // Helper function to generate a unique username
 async function generateUniqueUsername(baseUsername) {
-  let username = baseUsername;
+  // Normalize the base username: replace spaces with underscores, remove special chars
+  let normalizedBase = baseUsername
+    .replace(/\s+/g, '_')  // Replace spaces with underscores
+    .replace(/[^a-zA-Z0-9_\-\.]/g, '') // Remove special characters except underscore, hyphen, dot
+    .toLowerCase(); // Convert to lowercase
+  
+  // Ensure it's not empty after normalization
+  if (!normalizedBase || normalizedBase.length < 3) {
+    normalizedBase = 'user';
+  }
+  
+  let username = normalizedBase;
   let counter = 1;
   
   // Keep checking if username exists and increment counter if it does
@@ -17,7 +28,7 @@ async function generateUniqueUsername(baseUsername) {
       return username;
     }
     
-    username = `${baseUsername}${counter}`;
+    username = `${normalizedBase}${counter}`;
     counter++;
   }
 }

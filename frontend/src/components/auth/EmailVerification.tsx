@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Mail, CheckCircle, AlertCircle, Loader, Calendar, RefreshCw } from 'lucide-react';
-import { API_BASE_URL } from '../config/environment';
-import { useToast } from '../contexts/ToastContext';
+import { useAuth } from '../../contexts/AuthContext';
+import { useToast } from '../../contexts/ToastContext';
 
 interface VerificationState {
   isLoading: boolean;
@@ -17,6 +17,7 @@ interface VerificationState {
 const EmailVerificationPage: React.FC = () => {
   const { token } = useParams<{ token: string }>();
   const navigate = useNavigate();
+  const { verifyEmail, resendVerification, isLoading } = useAuth();
   const { showSuccess, showError } = useToast();
   
   const [verificationState, setVerificationState] = useState<VerificationState>({
@@ -31,7 +32,7 @@ const EmailVerificationPage: React.FC = () => {
   // Verify email on component mount
   useEffect(() => {
     if (token) {
-      verifyEmail();
+      handleVerifyEmail();
     } else {
       setVerificationState({
         isLoading: false,
@@ -42,39 +43,32 @@ const EmailVerificationPage: React.FC = () => {
     }
   }, [token]);
 
-  const verifyEmail = async () => {
+  const handleVerifyEmail = async () => {
+    if (!token) return;
+    
     try {
       console.log('📧 Verifying email with token:', token?.substring(0, 10) + '...');
       
-      const response = await fetch(`${API_BASE_URL}/api/auth/verify/${token}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      });
+      const success = await verifyEmail(token);
 
-      const data = await response.json();
-      console.log('📧 Email verification response:', data);
-
-      if (response.ok && data.success) {
+      if (success) {
         console.log('✅ Email verification successful');
-        const userInfo = {
-          username: data.data?.user?.username || 'User',
-          email: data.data?.user?.email || ''
-        };
         setVerificationState({
           isLoading: false,
           success: true,
           error: null,
-          userInfo
+          userInfo: {
+            username: 'User', // AuthContext handles user data
+            email: ''
+          }
         });
         showSuccess(
           'Email Verified Successfully!',
-          `Welcome ${userInfo.username}! Your account is now active.`
+          'Your account is now active. You can now log in.'
         );
       } else {
-        console.error('❌ Email verification failed:', data.msg);
-        const errorMessage = data.msg || 'Email verification failed';
+        console.error('❌ Email verification failed');
+        const errorMessage = 'Email verification failed. The link may be invalid or expired.';
         setVerificationState({
           isLoading: false,
           success: false,
@@ -111,21 +105,12 @@ const EmailVerificationPage: React.FC = () => {
     try {
       console.log('📧 Resending verification email to:', email);
       
-      const response = await fetch(`${API_BASE_URL}/api/auth/resend-verification`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ email })
-      });
+      const result = await resendVerification(email);
 
-      const data = await response.json();
-      console.log('📧 Resend verification response:', data);
-
-      if (response.ok && data.success) {
-        showSuccess('Verification Email Sent!', 'Please check your inbox for the verification link.');
+      if (result.success) {
+        showSuccess('Verification Email Sent!', result.message || 'Please check your inbox for the verification link.');
       } else {
-        const errorMessage = data.msg || 'Failed to resend verification email';
+        const errorMessage = result.message || 'Failed to resend verification email';
         showError('Failed to Resend Email', errorMessage);
       }
     } catch (error) {
@@ -242,10 +227,10 @@ const EmailVerificationPage: React.FC = () => {
             {(verificationState.error?.includes('expired') || verificationState.error?.includes('invalid')) && (
               <button
                 onClick={handleResendVerification}
-                disabled={isResending}
+                disabled={isResending || isLoading}
                 className="w-full bg-purple-600 text-white py-3 rounded-lg font-semibold hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
-                {isResending ? (
+                {isResending || isLoading ? (
                   <div className="flex items-center justify-center">
                     <RefreshCw className="w-4 h-4 animate-spin mr-2" />
                     Sending Email...

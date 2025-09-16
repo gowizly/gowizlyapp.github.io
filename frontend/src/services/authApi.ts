@@ -7,17 +7,6 @@ class AuthApiService {
     this.baseUrl = `${API_BASE_URL}/api/auth`;
     console.log('🔧 Auth API Service initialized with base URL:', this.baseUrl);
   }
-  // API Configuration
-  private API_CONFIG = {
-    AUTH_ENDPOINTS: {
-      LOGIN: '/login',
-      REGISTER: '/register',
-      FORGOT_PASSWORD: '/forgot-password',
-      VERIFY_EMAIL: '/verify',
-      RESET_PASSWORD: '/reset-password',
-      ME: '/me'
-    }
-  };
   
   // API utility functions
   private apiRequest = async (endpoint: string, options: RequestInit = {}) => {

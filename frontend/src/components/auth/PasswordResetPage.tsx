@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Calendar, Mail, Lock, Eye, EyeOff, CheckCircle, RefreshCw } from 'lucide-react';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface PasswordResetPageProps {
   onBackToLogin: () => void;

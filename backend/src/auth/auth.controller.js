@@ -452,24 +452,6 @@ export const resetPassword = async (req, res) => {
   }
 };
 
-// Logout (for token invalidation - client-side mainly)
-export const logout = async (req, res) => {
-  try {
-    // In a JWT setup, logout is mainly handled client-side by removing the token
-    // But we can log the action for security purposes
-    res.json({
-      success: true,
-      msg: "Logged out successfully"
-    });
-  } catch (error) {
-    console.error("Logout error:", error);
-    res.status(500).json({
-      success: false,
-      msg: "Internal server error"
-    });
-  }
-};
-
 // Get current user profile
 export const getCurrentUser = async (req, res) => {
   try {
@@ -504,7 +486,7 @@ export const getCurrentUser = async (req, res) => {
       data: {
         user: {
           ...user,
-          childrenCount: 0 // Default to 0 since children relation is not selected
+          childrenCount: user.children?.length || 0
         }
       }
     });
@@ -520,35 +502,43 @@ export const getCurrentUser = async (req, res) => {
 
 // OAuth Callback Handler
 export const handleOAuthCallback = async (req, res) => {
-  const { token, error } = req.query;
-  
-  if (error) {
-    logWarn('OAuth callback error received', { error });
-    return res.status(400).json({
-      success: false,
-      msg: "Authentication failed",
-      error: error
-    });
-  }
-  
-  if (!token) {
-    logWarn('OAuth callback missing token');
-    return res.status(400).json({
-      success: false,
-      msg: "No authentication token provided"
-    });
-  }
-
-  logInfo('OAuth callback successful', { tokenLength: token.length });
-
-  res.json({
-    success: true,
-    msg: "Authentication successful",
-    data: {
-      token: token,
-      expiresIn: "7d"
+  try {
+    const { token, error } = req.query;
+    
+    if (error) {
+      logWarn('OAuth callback error received', { error });
+      return res.status(400).json({
+        success: false,
+        msg: "Authentication failed",
+        error: error
+      });
     }
-  });
+    
+    if (!token) {
+      logWarn('OAuth callback missing token');
+      return res.status(400).json({
+        success: false,
+        msg: "No authentication token provided"
+      });
+    }
+
+    logInfo('OAuth callback successful', { tokenLength: token.length });
+
+    res.json({
+      success: true,
+      msg: "Authentication successful",
+      data: {
+        token: token,
+        expiresIn: "7d"
+      }
+    });
+  } catch (error) {
+    logError("OAuth callback error", error);
+    res.status(500).json({
+      success: false,
+      msg: "Internal server error"
+    });
+  }
 };
 
 // Google OAuth Callback Handler
@@ -652,151 +642,8 @@ export const resendVerification = async (req, res) => {
   }
 };
 
-// Update user profile
+// Update user profile 
 export const updateUserProfile = async (req, res) => {
-  try {
-    const userId = req.user.id;
-    const updateData = {};
-
-    // Only include fields that are provided
-    const allowedFields = ['username', 'email'];
-    
-    allowedFields.forEach(field => {
-      if (req.body[field] !== undefined) {
-        updateData[field] = req.body[field];
-      }
-    });
-
-    if (Object.keys(updateData).length === 0) {
-      return res.status(400).json({
-        success: false,
-        msg: "No valid fields provided for update"
-      });
-    }
-
-    // Check if username already exists (if updating username)
-    if (updateData.username) {
-      const existingUser = await prisma.user.findUnique({
-        where: { 
-          username: updateData.username,
-          NOT: { id: userId }
-        }
-      });
-
-      if (existingUser) {
-        return res.status(400).json({
-          success: false,
-          msg: "Username already exists"
-        });
-      }
-    }
-
-    // Check if email already exists (if updating email)
-    if (updateData.email) {
-      const existingUser = await prisma.user.findUnique({
-        where: { 
-          email: updateData.email,
-          NOT: { id: userId }
-        }
-      });
-
-      if (existingUser) {
-        return res.status(400).json({
-          success: false,
-          msg: "Email already exists"
-        });
-      }
-
-      // If email is being updated, mark as unverified
-      updateData.isVerified = false;
-    }
-
-    updateData.updatedAt = new Date();
-
-    // Update user profile
-    const updatedUser = await prisma.user.update({
-      where: { id: userId },
-      data: updateData,
-      select: {
-        id: true,
-        username: true,
-        email: true,
-        isVerified: true,
-        createdAt: true,
-        updatedAt: true
-      }
-    });
-
-    logInfo("User profile updated successfully", { 
-      userId,
-      updatedFields: Object.keys(updateData)
-    });
-
-    res.json({
-      success: true,
-      msg: "Profile updated successfully",
-      data: { user: updatedUser }
-    });
-
-  } catch (error) {
-    logError("Update user profile error", error, { userId: req.user?.id });
-    res.status(500).json({
-      success: false,
-      msg: "Internal server error"
-    });
-  }
-};
-
-// Get current user profile (authenticated user)
-export const getUserProfile = async (req, res) => {
-  try {
-    logInfo('Get user profile request', { userId: req.user.id });
-
-    const user = await prisma.user.findUnique({
-      where: { id: req.user.id },
-      select: {
-        id: true,
-        username: true,
-        email: true,
-        address: true,
-        isVerified: true,
-        createdAt: true,
-        updatedAt: true
-      }
-    });
-
-    if (!user) {
-      logWarn('User not found in get profile', { userId: req.user.id });
-      return res.status(404).json({
-        success: false,
-        msg: "User not found"
-      });
-    }
-
-    logInfo('User profile retrieved successfully', { userId: req.user.id });
-
-    res.json({
-      success: true,
-      msg: "Profile retrieved successfully",
-      data: { 
-        user: {
-          ...user,
-          childrenCount: 0 // Default to 0 since children relation is not selected
-        }
-      }
-    });
-
-  } catch (error) {
-    logError("Get user profile error", error, { userId: req.user?.id });
-    res.status(500).json({
-      success: false,
-      msg: "Internal server error"
-    });
-  }
-};
-
-// Update user profile (PATCH - partial update)
-export const patchUserProfile = async (req, res) => {
   try {
     const { username, email, address } = req.body;
     

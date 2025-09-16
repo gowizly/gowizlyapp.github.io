@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Calendar, LogOut } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
+import { useAuth } from '../../contexts/AuthContext';
 import ConfirmationDialog from './ConfirmationDialog'; // Import the confirmation dialog
 
 const Header: React.FC = () => {

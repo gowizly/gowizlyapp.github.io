@@ -1,6 +1,6 @@
 import React from 'react';
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
-import { Event } from '../services/eventApi';
+import { Event } from '../../services/eventApi';
 import EventTypeLegend from './EventTypeLegend';
 
 interface LocalChild {
