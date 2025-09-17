@@ -241,25 +241,17 @@ export const validateChildId = (childId: number | null): ValidationError | null 
   return null;
 };
 
-export const validateStartTime = (startTime: string, endTime?: string): ValidationError | null => {
+export const validateStartTime = (startTime: string): ValidationError | null => {
   if (!startTime) {
     return null; // Start time is optional for all-day events
-  }
-  
-  if (endTime && startTime >= endTime) {
-    return { field: 'startTime', message: 'Start time must be before end time' };
   }
   
   return null;
 };
 
-export const validateEndTime = (endTime: string, startTime?: string): ValidationError | null => {
+export const validateEndTime = (endTime: string): ValidationError | null => {
   if (!endTime) {
     return null; // End time is optional for all-day events
-  }
-  
-  if (startTime && endTime <= startTime) {
-    return { field: 'endTime', message: 'End time must be after start time' };
   }
   
   return null;

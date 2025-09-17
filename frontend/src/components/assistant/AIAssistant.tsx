@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Mail, Camera, Upload, Bot, Loader2, ArrowLeft } from 'lucide-react';
+import { Mail, Camera, Upload, Bot, Loader2, X } from 'lucide-react';
 import { aiAssistantApiService } from '../../services/aiAssistantApi';
 import { useToast } from '../../contexts/ToastContext';
 
@@ -247,7 +247,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ children, onEventsCreated, on
                 {/* Child Selection */}
                 {children.length > 0 && (
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm text-left font-semibold text-gray-700 mb-2">
                       Assign events to child:
                     </label>
                     <select
@@ -266,7 +266,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ children, onEventsCreated, on
                 )}
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm text-left font-semibold text-gray-700 mb-2">
                     Email Content:
                   </label>
                   <textarea
@@ -276,7 +276,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ children, onEventsCreated, on
                     placeholder="Paste your email content here. The AI will extract dates, events, assignments, and other calendar items..."
                     disabled={isProcessing}
                   />
-                  <div className="mt-2 text-sm text-gray-500">
+                  <div className="mt-2 text-sm text-left text-gray-500">
                     Characters: {emailText.length}
                   </div>
                 </div>
@@ -305,7 +305,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ children, onEventsCreated, on
                 {/* Child Selection */}
                 {children.length > 0 && (
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm text-left font-semibold text-gray-700 mb-2">
                       Assign events to child:
                     </label>
                     <select
@@ -379,7 +379,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ children, onEventsCreated, on
                         className="absolute top-4 right-4 bg-red-500 text-white rounded-full p-3 hover:bg-red-600 transition-colors text-xl font-bold"
                         disabled={isProcessing}
                       >
-                        ×
+                        <X className="w-5 h-5" />
                       </button>
                     </div>
                   )}

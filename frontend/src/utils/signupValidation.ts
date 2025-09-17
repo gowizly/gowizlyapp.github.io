@@ -97,7 +97,7 @@ export const analyzePasswordStrength = (password: string): PasswordStrength => {
   let score = 0;
 
   if (!password) {
-    return { score: 0, feedback: ['Password is required'], isValid: false };
+    return { score: 0, feedback: [], isValid: false };
   }
 
   // Length check
@@ -158,6 +158,13 @@ export const analyzePasswordStrength = (password: string): PasswordStrength => {
 
 export const validatePassword = (password: string): ValidationError[] => {
   const errors: ValidationError[] = [];
+
+  // Check if password is empty or only whitespace
+  if (!password || password.trim().length === 0) {
+    errors.push({ field: 'password', message: 'Password is required' });
+    return errors;
+  }
+
   const strength = analyzePasswordStrength(password);
 
   if (!strength.isValid) {

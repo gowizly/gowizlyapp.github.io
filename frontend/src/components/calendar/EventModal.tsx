@@ -236,12 +236,12 @@ const EventModal: React.FC<EventModalProps> = ({
         break;
       case 'startTime':
         if (!dataToUse.isAllDay) {
-          error = validateStartTime(value as string, dataToUse.endTime);
+          error = validateStartTime(value as string);
         }
         break;
       case 'endTime':
         if (!dataToUse.isAllDay) {
-          error = validateEndTime(value as string, dataToUse.startTime);
+          error = validateEndTime(value as string);
         }
         break;
     }
@@ -575,7 +575,7 @@ const EventModal: React.FC<EventModalProps> = ({
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Event Title */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Event Title *</label>
+              <label className="block text-sm text-left font-semibold text-gray-700 mb-2">Event Title *</label>
               <div className="relative">
                 <input
                   type="text"
@@ -602,7 +602,7 @@ const EventModal: React.FC<EventModalProps> = ({
 
             {/* Description */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
+              <label className="block text-sm text-left font-semibold text-gray-700 mb-2">Description</label>
               <div className="relative">
                 <textarea
                   value={eventData.description}
@@ -629,7 +629,7 @@ const EventModal: React.FC<EventModalProps> = ({
             {/* Event Type and Priority */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Event Type *</label>
+                <label className="block text-sm text-left font-semibold text-gray-700 mb-2">Event Type *</label>
                 <div className="relative">
                   <select
                     value={eventData.type}
@@ -651,7 +651,7 @@ const EventModal: React.FC<EventModalProps> = ({
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Priority</label>
+                <label className="block text-sm text-left font-semibold text-gray-700 mb-2">Priority</label>
                 <div className="relative">
                   <select
                     value={eventData.priority}
@@ -674,7 +674,7 @@ const EventModal: React.FC<EventModalProps> = ({
 
             {/* Assign To */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Assign To *</label>
+              <label className="block text-sm text-left font-semibold text-gray-700 mb-2">Assign To *</label>
               <div className="relative">
                 <select
                   value={eventData.childId?.toString() || 'all'}
@@ -715,7 +715,7 @@ const EventModal: React.FC<EventModalProps> = ({
             {/* Start and End Dates */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Start Date *</label>
+                <label className="block text-sm text-left font-semibold text-gray-700 mb-2">Start Date *</label>
                 <div className="relative">
                   <input
                     type="date"
@@ -739,7 +739,7 @@ const EventModal: React.FC<EventModalProps> = ({
                 )}
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">End Date</label>
+                <label className="block text-sm text-left font-semibold text-gray-700 mb-2">End Date</label>
                 <div className="relative">
                   <input
                     type="date"
@@ -762,7 +762,7 @@ const EventModal: React.FC<EventModalProps> = ({
             {!eventData.isAllDay && (
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Start Time</label>
+                  <label className="block text-sm text-left font-semibold text-gray-700 mb-2">Start Time</label>
                   <div className="relative">
                     <input
                       type="time"
@@ -774,14 +774,14 @@ const EventModal: React.FC<EventModalProps> = ({
                       required
                     />
                   </div>
-                  {fieldTouched.startTime && fieldErrors.startTime && (
+                  {/* {fieldTouched.startTime && fieldErrors.startTime && (
                     <div className="text-xs text-red-500 mt-1">
                       {fieldErrors.startTime}
                     </div>
-                  )}
+                  )} */}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">End Time</label>
+                  <label className="block text-sm text-left font-semibold text-gray-700 mb-2">End Time</label>
                   <div className="relative">
                     <input
                       type="time"
@@ -793,11 +793,11 @@ const EventModal: React.FC<EventModalProps> = ({
                       required
                     />
                   </div>
-                  {fieldTouched.endTime && fieldErrors.endTime && (
+                  {/* {fieldTouched.endTime && fieldErrors.endTime && (
                     <div className="text-xs text-red-500 mt-1">
                       {fieldErrors.endTime}
                     </div>
-                  )}
+                  )} */}
                 </div>
               </div>
             )}
@@ -811,7 +811,7 @@ const EventModal: React.FC<EventModalProps> = ({
                   onChange={(e) => handleFieldChange('isAllDay', e.target.checked)}
                   className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
                 />
-                <span className="text-sm text-gray-700">All Day Event</span>
+                <span className="text-sm text-left font-semibold text-gray-700">All Day Event</span>
               </label>
             </div>
 

@@ -31,9 +31,7 @@ interface AuthContextType {
   requestPasswordReset: (email: string) => Promise<boolean>;
   validateResetToken: (token: string) => Promise<{ isValid: boolean; userEmail?: string; userName?: string; message?: string }>;
   resetPassword: (token: string, newPassword: string) => Promise<boolean>;
-  googleLogin: () => Promise<boolean>;
-  handleOAuthCallback: (token: string) => Promise<boolean>;
-  updateProfile: (username: string, address: string) => Promise<boolean>;
+  updateProfile: (username: string, address: string) => Promise<{success: boolean; message?: string; errors?: Record<string, string>}>;
   deleteAccount: () => Promise<boolean>;
   setUser: (user: User | null) => void;
   setToken: (token: string | null) => void;
@@ -99,10 +97,17 @@ const fetchUserProfile = async (token: string): Promise<User | null> => {
       isVerified: userData.isVerified,
       createdAt: userData.createdAt,
       updatedAt: userData.updatedAt,
-      childrenCount: userData.childrenCount || 0
+      childrenCount: userData.children ? userData.children.length : (userData.childrenCount || 0)
     };
-  } catch (error) {
+  } catch (error: any) {
     console.error('❌ Error fetching user profile:', error);
+    
+    // Log response details if available
+    if (error.response) {
+      console.error('Response status:', error.response.status);
+      console.error('Response data:', error.response.data);
+    }
+    
     return null;
   }
 };
@@ -330,22 +335,21 @@ const login = async (email: string, password: string, rememberMe: boolean = fals
       };
     } catch (error: any) {
       console.error('Signup error:', error);
+      console.error('Error response data:', error.response?.data);
       
       // Handle specific error cases
       if (error.response?.status === 400) {
         const errorData = error.response.data;
         const errorMsg = errorData?.errorMsg || errorData?.message || errorData?.msg;
         
-        // Check for validation errors
-        if (errorData?.errors && typeof errorData.errors === 'object') {
-          return { 
-            success: false, 
-            message: errorMsg || 'Please fix the validation errors below.',
-            errors: errorData.errors 
-          };
-        }
+        console.log('🔍 Signup error analysis:', {
+          errorMsg,
+          isVerified: errorData?.isVerified,
+          needsVerification: errorData?.needsVerification,
+          hasErrors: !!errorData?.errors,
+          errorData
+        });
         
-        // Check if it's an email already exists error
         if (errorMsg && (
           errorMsg.toLowerCase().includes('email already') || 
           errorMsg.toLowerCase().includes('already registered') ||
@@ -376,6 +380,15 @@ const login = async (email: string, password: string, rememberMe: boolean = fals
           };
         }
         
+        // Check for validation errors
+        if (errorData?.errors && typeof errorData.errors === 'object') {
+          return { 
+            success: false, 
+            message: errorMsg || 'Please fix the validation errors below.',
+            errors: errorData.errors 
+          };
+        }
+
         // Check for username already exists
         if (errorMsg && (
           errorMsg.toLowerCase().includes('username already') || 
@@ -407,14 +420,14 @@ const login = async (email: string, password: string, rememberMe: boolean = fals
   };
 
   // Fixed updateProfile function in AuthContext
-const updateProfile = async (username: string, address: string): Promise<boolean> => {
+const updateProfile = async (username: string, address: string): Promise<{success: boolean; message?: string; errors?: Record<string, string>}> => {
   try {
     setIsLoading(true);
     console.log('🔄 Updating user profile...');
 
     if (!token) {
       console.error('❌ No authentication token available');
-      return false;
+      return { success: false, message: 'Authentication required' };
     }
 
     const response = await axios.patch(`${AUTH_BASE_URL}/profile`, {
@@ -431,7 +444,11 @@ const updateProfile = async (username: string, address: string): Promise<boolean
     
     if (!response.data || !response.data.success) {
       console.error('❌ Profile update failed:', response.data?.msg || 'Unknown error');
-      return false;
+      return { 
+        success: false, 
+        message: response.data?.msg || 'Profile update failed',
+        errors: response.data?.errors 
+      };
     }
 
     const data = response.data;
@@ -458,16 +475,30 @@ const updateProfile = async (username: string, address: string): Promise<boolean
       setCookie('user_data', JSON.stringify(updatedUser), 7);
     }
     
-    return true;
+    return { success: true, message: data.msg || 'Profile updated successfully' };
   } catch (error: any) {
     console.error('❌ Error updating profile:', error);
     
     if (error.response?.status === 401) {
       console.log('🔓 Authentication failed during profile update');
       logout();
+      return { success: false, message: 'Authentication failed' };
     }
     
-    return false;
+    // Handle validation errors (400 status)
+    if (error.response?.status === 400) {
+      const errorData = error.response.data;
+      return {
+        success: false,
+        message: errorData?.msg || 'Validation failed',
+        errors: errorData?.errors
+      };
+    }
+    
+    return { 
+      success: false, 
+      message: error.response?.data?.msg || 'An error occurred while updating profile' 
+    };
   } finally {
     setIsLoading(false);
   }
@@ -683,59 +714,6 @@ const updateProfile = async (username: string, address: string): Promise<boolean
     }
   };
 
-  const googleLogin = async (): Promise<boolean> => {
-    try {
-      console.log('🔐 Initiating Google OAuth login...');
-      
-      // Redirect to Google OAuth endpoint
-      const googleAuthUrl = `${AUTH_BASE_URL}/google`;
-      console.log('🔗 Redirecting to:', googleAuthUrl);
-      
-      window.location.href = googleAuthUrl;
-      
-      // Return true to indicate the redirect was initiated
-      // The actual authentication will be handled by the callback
-      return true;
-    } catch (error) {
-      console.error('❌ Google login error:', error);
-      return false;
-    }
-  };
-
-  const handleOAuthCallback = async (oauthToken: string): Promise<boolean> => {
-    try {
-      setIsLoading(true);
-      console.log('🔐 Processing OAuth callback with token:', oauthToken.substring(0, 20) + '...');
-      
-      // Set the token first
-      setToken(oauthToken);
-      setIsEmailVerified(true); // OAuth users are verified by default
-      
-      // Fetch user data with the provided token
-      const userData = await fetchUserProfile(oauthToken);
-      
-      if (userData) {
-        console.log('✅ OAuth authentication successful');
-        setUser(userData);
-        return true;
-      } else {
-        console.error('❌ Failed to fetch user data for OAuth token');
-        // Clear the token if user data fetch failed
-        setToken(null);
-        setIsEmailVerified(false);
-        return false;
-      }
-    } catch (error) {
-      console.error('❌ OAuth callback error:', error);
-      // Clear auth state on error
-      setToken(null);
-      setUser(null);
-      setIsEmailVerified(false);
-      return false;
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const value: AuthContextType = {
     user,
@@ -751,8 +729,6 @@ const updateProfile = async (username: string, address: string): Promise<boolean
     requestPasswordReset,
     validateResetToken,
     resetPassword,
-    googleLogin,
-    handleOAuthCallback,
     updateProfile,
     deleteAccount,
     setUser,

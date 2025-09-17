@@ -267,7 +267,7 @@ const ResetPassword: React.FC = () => {
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* New Password */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm text-left font-medium text-gray-700 mb-2">
               New Password *
             </label>
             <div className="relative">
@@ -290,7 +290,7 @@ const ResetPassword: React.FC = () => {
               </button>
             </div>
             {resetState.errors.password && (
-              <p className="text-red-500 text-sm mt-1">{resetState.errors.password}</p>
+              <p className="text-red-500 text-sm text-left mt-1">{resetState.errors.password}</p>
             )}
             <div className="text-xs text-gray-500 mt-1">
               Password must be at least 8 characters with uppercase, lowercase, number, and special character
@@ -299,7 +299,7 @@ const ResetPassword: React.FC = () => {
 
           {/* Confirm Password */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm text-left font-medium text-gray-700 mb-2">
               Confirm New Password *
             </label>
             <div className="relative">
@@ -322,7 +322,7 @@ const ResetPassword: React.FC = () => {
               </button>
             </div>
             {resetState.errors.confirmPassword && (
-              <p className="text-red-500 text-sm mt-1">{resetState.errors.confirmPassword}</p>
+              <p className="text-red-500 text-sm text-left mt-1">{resetState.errors.confirmPassword}</p>
             )}
           </div>
 

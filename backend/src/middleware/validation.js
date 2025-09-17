@@ -98,7 +98,6 @@ export const validateResetPassword = [
   validateRequest
 ];
 
-// User profile update validation
 export const validateUserProfileUpdate = [
   body("username")
     .optional()
@@ -120,7 +119,16 @@ export const validateUserProfileUpdate = [
     .optional()
     .trim()
     .isLength({ max: 500 })
-    .withMessage("Address cannot exceed 500 characters"),
+    .withMessage("Address cannot exceed 500 characters")
+    .custom((value) => {
+      // Allow empty string for address (to clear it)
+      if (value === '') return true;
+      // Basic address validation
+      if (value && value.length < 10) {
+        throw new Error('Address seems too short. Please provide a complete address.');
+      }
+      return true;
+    }),
   
   validateRequest
 ];

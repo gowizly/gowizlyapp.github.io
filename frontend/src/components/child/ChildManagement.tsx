@@ -469,8 +469,8 @@ const ChildManagement: React.FC<ChildManagementProps> = ({ onBack, onChildCreate
                 <div className="space-y-2">
                   <hr />
                   <div className='text-sm text-gray-600'>
-                    <p className='font-bold text-left'>Upcoming Events</p>
-                    {/* fileter upcoming events according to child id */}
+                    <p className='font-semibold text-left'>Upcoming Events ({upcomingEvents.filter((event) => event.children?.some((c) => c.id === child.id)).length})</p>
+                    {/* filter upcoming events according to child id also show number of upcoming events */}
                     {upcomingEvents
                       .filter((event) => event.children?.some((c) => c.id === child.id))
                       .map((event) => (
@@ -534,7 +534,7 @@ const ChildManagement: React.FC<ChildManagementProps> = ({ onBack, onChildCreate
                 className="space-y-4"
               >
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm text-left font-semibold text-gray-700 mb-2">
                     Name *
                   </label>
                   <div className="relative">
@@ -548,19 +548,13 @@ const ChildManagement: React.FC<ChildManagementProps> = ({ onBack, onChildCreate
                       maxLength={50}
                       required
                     />
-                    {fieldTouched.name && !fieldErrors.name && formData.name && (
-                      <Check className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-green-500" />
-                    )}
-                    {fieldTouched.name && fieldErrors.name && (
-                      <AlertCircle className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-red-500" />
-                    )}
                   </div>
-                  <div className="flex justify-between items-center mt-1">
-                    <div className="text-xs text-gray-500">
+                  <div className="flex-col justify-between items-start mt-1">
+                    <div className="text-xs text-left text-gray-500">
                       {formData.name.length}/50 characters
                     </div>
                     {fieldTouched.name && fieldErrors.name && (
-                      <div className="text-xs text-red-500">
+                      <div className="text-xs text-left text-red-500 mt-1">
                         {fieldErrors.name}
                       </div>
                     )}
@@ -568,7 +562,7 @@ const ChildManagement: React.FC<ChildManagementProps> = ({ onBack, onChildCreate
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm text-left font-semibold text-gray-700 mb-2">
                     Grade Level *
                   </label>
                   <div className="relative">
@@ -586,22 +580,16 @@ const ChildManagement: React.FC<ChildManagementProps> = ({ onBack, onChildCreate
                         </option>
                       ))}
                     </select>
-                    {fieldTouched.gradeLevel && !fieldErrors.gradeLevel && formData.gradeLevel && (
-                      <Check className="absolute right-8 top-1/2 transform -translate-y-1/2 w-5 h-5 text-green-500" />
-                    )}
-                    {fieldTouched.gradeLevel && fieldErrors.gradeLevel && (
-                      <AlertCircle className="absolute right-8 top-1/2 transform -translate-y-1/2 w-5 h-5 text-red-500" />
-                    )}
-                  </div>
+                    </div>
                   {fieldTouched.gradeLevel && fieldErrors.gradeLevel && (
-                    <div className="text-xs text-red-500 mt-1">
+                    <div className="text-xs text-left text-red-500">
                       {fieldErrors.gradeLevel}
                     </div>
                   )}
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm text-left font-semibold text-gray-700 mb-2">
                     School Name *
                   </label>
                   <div className="relative">
@@ -615,19 +603,13 @@ const ChildManagement: React.FC<ChildManagementProps> = ({ onBack, onChildCreate
                       maxLength={100}
                       required
                     />
-                    {fieldTouched.schoolName && !fieldErrors.schoolName && formData.schoolName && (
-                      <Check className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-green-500" />
-                    )}
-                    {fieldTouched.schoolName && fieldErrors.schoolName && (
-                      <AlertCircle className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-red-500" />
-                    )}
                   </div>
-                  <div className="flex justify-between items-center mt-1">
-                    <div className="text-xs text-gray-500">
+                  <div className="flex-col justify-between items-start mt-1">
+                    <div className="text-xs text-left text-gray-500">
                       {formData.schoolName.length}/100 characters
                     </div>
                     {fieldTouched.schoolName && fieldErrors.schoolName && (
-                      <div className="text-xs text-red-500">
+                      <div className="text-xs text-left text-red-500 mt-1">
                         {fieldErrors.schoolName}
                       </div>
                     )}
@@ -635,7 +617,7 @@ const ChildManagement: React.FC<ChildManagementProps> = ({ onBack, onChildCreate
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm text-left font-semibold text-gray-700 mb-2">
                     Birth Date *
                   </label>
                   <div className="relative">
@@ -647,12 +629,6 @@ const ChildManagement: React.FC<ChildManagementProps> = ({ onBack, onChildCreate
                       className={getFieldClassName('birthDate')}
                       required
                     />
-                    {fieldTouched.birthDate && !fieldErrors.birthDate && formData.birthDate && (
-                      <Check className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-green-500" />
-                    )}
-                    {fieldTouched.birthDate && fieldErrors.birthDate && (
-                      <AlertCircle className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-red-500" />
-                    )}
                   </div>
                   <div className="mt-1">
                     {formData.birthDate && !fieldErrors.birthDate && (
@@ -669,7 +645,7 @@ const ChildManagement: React.FC<ChildManagementProps> = ({ onBack, onChildCreate
                       </div>
                     )}
                     {fieldTouched.birthDate && fieldErrors.birthDate && (
-                      <div className="text-xs text-red-500">
+                      <div className="text-xs text-left text-red-500 mt-1">
                         {fieldErrors.birthDate}
                       </div>
                     )}

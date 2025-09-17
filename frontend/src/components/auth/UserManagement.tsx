@@ -21,6 +21,9 @@ const UserManagement: React.FC<UserManagementProps> = ({ onBack }) => {
     username: user?.username || '',
     address: user?.address || ''
   });
+  
+  // Validation errors
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
 
   // Update form data when user data changes
   useEffect(() => {
@@ -38,24 +41,69 @@ const UserManagement: React.FC<UserManagementProps> = ({ onBack }) => {
       ...prev,
       [name]: value
     }));
+    
+    // Clear validation error for this field when user starts typing
+    if (validationErrors[name]) {
+      setValidationErrors(prev => ({
+        ...prev,
+        [name]: ''
+      }));
+    }
+  };
+
+  // Frontend validation function
+  const validateForm = () => {
+    const errors: Record<string, string> = {};
+    
+    // Username validation
+    if (!formData.username.trim()) {
+      errors.username = 'Username is required';
+    } else if (formData.username.trim().length < 3) {
+      errors.username = 'Username must be between 3 and 50 characters';
+    } else if (formData.username.trim().length > 50) {
+      errors.username = 'Username must be between 3 and 50 characters';
+    } else if (!/^[a-zA-Z0-9_\-\.]+$/.test(formData.username.trim())) {
+      errors.username = 'Username can only contain letters, numbers, underscores, hyphens, and dots';
+    }
+    
+    // Address validation
+    if (formData.address.trim() && formData.address.trim().length > 500) {
+      errors.address = 'Address cannot exceed 500 characters';
+    } else if (formData.address.trim() && formData.address.trim().length < 10) {
+      errors.address = 'Address seems too short. Please provide a complete address.';
+    }
+    
+    setValidationErrors(errors);
+    return Object.keys(errors).length === 0;
   };
 
   const handleSaveProfile = async () => {
-    if (!formData.username.trim()) {
-      showError('Validation Error', 'Username cannot be empty');
+    // Clear previous validation errors
+    setValidationErrors({});
+    
+    // Frontend validation
+    if (!validateForm()) {
+      showError('Validation Error', 'Please fix the errors below');
       return;
     }
 
     setIsLoading(true);
     try {
       console.log('🔄 Updating user profile...');
-      const success = await updateProfile(formData.username, formData.address);
+      const result = await updateProfile(formData.username.trim(), formData.address.trim());
 
-      if (success) {
-        showSuccess('Profile Updated', 'Your profile has been updated successfully');
+      if (result.success) {
+        showSuccess('Profile Updated', result.message || 'Your profile has been updated successfully');
         setIsEditing(false);
+        setValidationErrors({});
       } else {
-        showError('Update Failed', 'Failed to update profile. Please try again.');
+        // Handle backend validation errors
+        if (result.errors) {
+          setValidationErrors(result.errors);
+          showError('Validation Error', 'Please fix the errors below');
+        } else {
+          showError('Update Failed', result.message || 'Failed to update profile. Please try again.');
+        }
       }
     } catch (error) {
       console.error('Error updating profile:', error);
@@ -93,6 +141,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ onBack }) => {
       username: user?.username || '',
       address: user?.address || ''
     });
+    setValidationErrors({});
     setIsEditing(false);
   };
 
@@ -175,15 +224,22 @@ const UserManagement: React.FC<UserManagementProps> = ({ onBack }) => {
                     Username
                   </label>
                   {isEditing ? (
-                    <input
-                      type="text"
-                      name="username"
-                      value={formData.username}
-                      onChange={handleInputChange}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-left"
-                      placeholder="Enter username"
-                      disabled={isLoading}
-                    />
+                    <>
+                      <input
+                        type="text"
+                        name="username"
+                        value={formData.username}
+                        onChange={handleInputChange}
+                        className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-left ${
+                          validationErrors.username ? 'border-red-500' : 'border-gray-300'
+                        }`}
+                        placeholder="Enter username"
+                        disabled={isLoading}
+                      />
+                      {validationErrors.username && (
+                        <p className="mt-1 text-sm text-red-600">{validationErrors.username}</p>
+                      )}
+                    </>
                   ) : (
                     <div className="px-3 py-2 bg-gray-50 rounded-lg text-gray-800 text-left">
                       {user?.username || 'Not set'}
@@ -211,15 +267,22 @@ const UserManagement: React.FC<UserManagementProps> = ({ onBack }) => {
                   </label>
                   {/* Address (Read / Edit) */}
                   {isEditing ? (
-                    <input
-                      type="text"
-                      name="address"
-                      value={formData.address}
-                      onChange={handleInputChange}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-left"
-                      placeholder="Enter address"
-                      disabled={isLoading}
-                    />
+                    <>
+                      <input
+                        type="text"
+                        name="address"
+                        value={formData.address}
+                        onChange={handleInputChange}
+                        className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-left ${
+                          validationErrors.address ? 'border-red-500' : 'border-gray-300'
+                        }`}
+                        placeholder="Enter address (optional)"
+                        disabled={isLoading}
+                      />
+                      {validationErrors.address && (
+                        <p className="mt-1 text-sm text-red-600">{validationErrors.address}</p>
+                      )}
+                    </>
                   ) : (
                     <div className="px-3 py-2 bg-gray-50 rounded-lg text-gray-800 text-left">
                       {user?.address || 'Not set'}
