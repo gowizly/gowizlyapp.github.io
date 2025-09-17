@@ -452,11 +452,81 @@ export const resetPassword = async (req, res) => {
   }
 };
 
-// Get current user profile
+// Debug version of getCurrentUser with extensive logging
 export const getCurrentUser = async (req, res) => {
+  console.log('=== GET /api/auth/me DEBUG START ===');
+  console.log('Timestamp:', new Date().toISOString());
+  
   try {
+    // Log all request details
+    console.log('Request headers:', {
+      authorization: req.headers.authorization ? 'Bearer ' + req.headers.authorization.split(' ')[1]?.substring(0, 10) + '...' : 'none',
+      'content-type': req.headers['content-type'],
+      'user-agent': req.headers['user-agent']?.substring(0, 50),
+    });
+    
+    console.log('Request user from middleware:', {
+      hasReqUser: !!req.user,
+      userId: req.user?.id,
+      userEmail: req.user?.email,
+      userVerified: req.user?.isVerified
+    });
+    
+    // Log session info if using Passport
+    console.log('Session info:', {
+      hasSession: !!req.session,
+      sessionId: req.sessionID,
+      isAuthenticated: req.isAuthenticated ? req.isAuthenticated() : 'not a function',
+      sessionUser: req.session?.user?.id || 'none'
+    });
+
+    // Check if user exists in request (set by auth middleware)
+    if (!req.user || !req.user.id) {
+      console.log('❌ Authentication check failed');
+      console.log('req.user exists:', !!req.user);
+      console.log('req.user.id exists:', !!req.user?.id);
+      
+      return res.status(401).json({
+        success: false,
+        msg: "Authentication required",
+        debug: {
+          hasReqUser: !!req.user,
+          userKeys: req.user ? Object.keys(req.user) : [],
+          timestamp: new Date().toISOString()
+        }
+      });
+    }
+
+    console.log('✅ Authentication check passed, userId:', req.user.id);
+    
     logInfo('Get current user request', { userId: req.user.id });
 
+    // Test database connection first
+    console.log('Testing database connection...');
+    try {
+      const dbTest = await prisma.$queryRaw`SELECT 1 as test`;
+      console.log('✅ Database connection successful:', dbTest);
+    } catch (dbError) {
+      console.log('❌ Database connection failed:', {
+        error: dbError.message,
+        code: dbError.code,
+        name: dbError.name
+      });
+      
+      logError('Database connection failed in getCurrentUser', dbError);
+      return res.status(503).json({
+        success: false,
+        msg: "Database service unavailable",
+        debug: {
+          dbError: dbError.message,
+          code: dbError.code
+        }
+      });
+    }
+
+    console.log('Querying user from database, userId:', req.user.id);
+    
+    // Query the user
     const user = await prisma.user.findUnique({
       where: { id: req.user.id },
       select: {
@@ -466,36 +536,145 @@ export const getCurrentUser = async (req, res) => {
         address: true,
         isVerified: true,
         createdAt: true,
-        updatedAt: true
+        updatedAt: true,
       }
     });
 
+    console.log('Database query result:', {
+      userFound: !!user,
+      userId: user?.id,
+      userEmail: user?.email,
+      isVerified: user?.isVerified
+    });
+
     if (!user) {
+      console.log('❌ User not found in database');
       logWarn('User not found in get current user', { userId: req.user.id });
       return res.status(404).json({
         success: false,
-        msg: "User not found"
+        msg: "User not found",
+        debug: {
+          searchedUserId: req.user.id,
+          timestamp: new Date().toISOString()
+        }
       });
     }
 
+    console.log('✅ User found successfully');
     logInfo('Current user retrieved successfully', { userId: req.user.id });
 
-    res.json({
+    const responseData = {
       success: true,
       msg: "Current user retrieved successfully",
       data: {
         user: {
           ...user,
-          childrenCount: user.children?.length || 0
+          childrenCount: 0
+        }
+      }
+    };
+
+    console.log('Sending response:', {
+      success: responseData.success,
+      userId: responseData.data.user.id,
+      username: responseData.data.user.username
+    });
+
+    console.log('=== GET /api/auth/me DEBUG END SUCCESS ===');
+    res.json(responseData);
+
+  } catch (error) {
+    console.log('❌ ERROR in getCurrentUser:', {
+      errorName: error.name,
+      errorMessage: error.message,
+      errorCode: error.code,
+      errorStack: error.stack?.split('\n').slice(0, 5).join('\n'),
+      userId: req.user?.id
+    });
+    
+    logError("Get current user error", error, { 
+      userId: req.user?.id,
+      errorName: error.name,
+      errorMessage: error.message
+    });
+    
+    // Handle specific database errors
+    if (error.code === 'P1001' || error.code === 'P1002') {
+      console.log('Database connection error detected');
+      return res.status(503).json({
+        success: false,
+        msg: "Database connection error",
+        debug: {
+          errorCode: error.code,
+          errorMessage: error.message
+        }
+      });
+    }
+
+    console.log('=== GET /api/auth/me DEBUG END ERROR ===');
+    res.status(500).json({
+      success: false,
+      msg: "Internal server error",
+      debug: {
+        errorName: error.name,
+        errorMessage: error.message,
+        errorCode: error.code,
+        timestamp: new Date().toISOString()
+      }
+    });
+  }
+};
+
+// Also add this temporary debug route to test without authentication
+export const debugAuthStatus = async (req, res) => {
+  console.log('=== DEBUG AUTH STATUS ===');
+  
+  try {
+    // Test database connection
+    const dbTest = await prisma.$queryRaw`SELECT 1 as test, NOW() as timestamp`;
+    console.log('Database test result:', dbTest);
+    
+    // Check environment variables
+    const envCheck = {
+      hasJwtSecret: !!process.env.JWT_SECRET,
+      jwtSecretLength: process.env.JWT_SECRET?.length || 0,
+      nodeEnv: process.env.NODE_ENV,
+      hasDatabaseUrl: !!process.env.DATABASE_URL,
+      databaseUrlPrefix: process.env.DATABASE_URL?.substring(0, 20) + '...' || 'none'
+    };
+    console.log('Environment check:', envCheck);
+    
+    // Get total user count
+    const userCount = await prisma.user.count();
+    
+    res.json({
+      success: true,
+      debug: {
+        timestamp: new Date().toISOString(),
+        database: {
+          connected: true,
+          testResult: dbTest,
+          userCount: userCount
+        },
+        environment: envCheck,
+        request: {
+          hasAuthHeader: !!req.headers.authorization,
+          hasSession: !!req.session,
+          sessionId: req.sessionID,
+          userAgent: req.headers['user-agent']?.substring(0, 100)
         }
       }
     });
-
+    
   } catch (error) {
-    logError("Get current user error", error, { userId: req.user?.id });
+    console.log('Debug route error:', error);
     res.status(500).json({
       success: false,
-      msg: "Internal server error"
+      error: {
+        name: error.name,
+        message: error.message,
+        code: error.code
+      }
     });
   }
 };
@@ -645,7 +824,19 @@ export const resendVerification = async (req, res) => {
 // Update user profile 
 export const updateUserProfile = async (req, res) => {
   try {
-    const { username, email, address } = req.body;
+    // Check authentication
+    if (!req.user || !req.user.id) {
+      return res.status(401).json({
+        success: false,
+        msg: "Authentication required"
+      });
+    }
+
+    const { 
+      username,
+      email,
+      address 
+    } = req.body;
     
     // Reject email update attempts
     if (email !== undefined) {
@@ -658,19 +849,42 @@ export const updateUserProfile = async (req, res) => {
     
     logInfo('Update user profile request', { 
       userId: req.user.id, 
-      hasUsername: !!username,
-      hasAddress: !!address
+      hasUsername: username !== undefined,
+      hasAddress: address !== undefined
     });
+
+    // Verify database connection
+    try {
+      await prisma.$queryRaw`SELECT 1`;
+    } catch (dbError) {
+      logError('Database connection failed in updateUserProfile', dbError);
+      return res.status(503).json({
+        success: false,
+        msg: "Database service unavailable"
+      });
+    }
 
     // Build update data object with only provided fields (excluding email)
     const updateData = {};
     
     if (username !== undefined) {
-      updateData.username = username;
+      if (typeof username !== 'string' || username.trim().length === 0) {
+        return res.status(400).json({
+          success: false,
+          msg: "Username must be a non-empty string"
+        });
+      }
+      updateData.username = username.trim();
     }
     
     if (address !== undefined) {
-      updateData.address = address;
+      if (typeof address !== 'string') {
+        return res.status(400).json({
+          success: false,
+          msg: "Address must be a string"
+        });
+      }
+      updateData.address = address.trim();
     }
 
     // If no fields provided, return error
@@ -685,29 +899,50 @@ export const updateUserProfile = async (req, res) => {
     updateData.updatedAt = new Date();
 
     // Check if username already exists (if being updated)
-    if (username) {
-      const existingUser = await prisma.user.findFirst({
-        where: {
-          AND: [
-            { id: { not: req.user.id } }, // Exclude current user
-            { username }
-          ]
-        }
-      });
-
-      if (existingUser) {
-        logWarn('Duplicate username in update', { 
-          userId: req.user.id, 
-          username
+    if (updateData.username) {
+      try {
+        const existingUser = await prisma.user.findFirst({
+          where: {
+            AND: [
+              { id: { not: req.user.id } }, // Exclude current user
+              { username: updateData.username }
+            ]
+          }
         });
-        return res.status(400).json({
+
+        if (existingUser) {
+          logWarn('Duplicate username in update', { 
+            userId: req.user.id, 
+            username: updateData.username
+          });
+          return res.status(400).json({
+            success: false,
+            msg: "Username already exists"
+          });
+        }
+      } catch (checkError) {
+        logError('Error checking username availability', checkError);
+        return res.status(500).json({
           success: false,
-          msg: "Username already exists"
+          msg: "Error validating username"
         });
       }
     }
 
-    // Update user
+    // CRITICAL FIX: Check if user exists before attempting update
+    const userExists = await prisma.user.findUnique({
+      where: { id: req.user.id }
+    });
+
+    if (!userExists) {
+      logError('User not found during profile update', null, { userId: req.user.id });
+      return res.status(404).json({
+        success: false,
+        msg: "User not found"
+      });
+    }
+
+    // Update user with proper error handling
     const updatedUser = await prisma.user.update({
       where: { id: req.user.id },
       data: updateData,
@@ -724,7 +959,7 @@ export const updateUserProfile = async (req, res) => {
 
     logInfo('User profile updated successfully', { 
       userId: req.user.id,
-      updatedFields: Object.keys(updateData)
+      updatedFields: Object.keys(updateData).filter(key => key !== 'updatedAt')
     });
 
     res.json({
@@ -734,20 +969,46 @@ export const updateUserProfile = async (req, res) => {
     });
 
   } catch (error) {
+    logError("Update user profile error", error, { 
+      userId: req.user?.id,
+      errorName: error.name,
+      errorCode: error.code,
+      errorMessage: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
+    
+    // Handle Prisma specific errors
     if (error.code === 'P2002') {
       const field = error.meta?.target?.[0] || 'field';
-      logWarn('Unique constraint violation in update', { 
-        userId: req.user.id, 
-        field,
-        error: error.message 
-      });
       return res.status(400).json({
         success: false,
         msg: field === 'username' ? 'Username already exists' : 'Field already exists'
       });
     }
+    
+    if (error.code === 'P2025') {
+      return res.status(404).json({
+        success: false,
+        msg: "User not found"
+      });
+    }
+    
+    // Handle database connection errors
+    if (error.code === 'P1001' || error.code === 'P1002' || error.code === 'P1008') {
+      return res.status(503).json({
+        success: false,
+        msg: "Database connection error"
+      });
+    }
 
-    logError("Update user profile error", error, { userId: req.user?.id });
+    // Handle database timeout errors
+    if (error.code === 'P1017') {
+      return res.status(503).json({
+        success: false,
+        msg: "Database timeout error"
+      });
+    }
+    
     res.status(500).json({
       success: false,
       msg: "Internal server error"

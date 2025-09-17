@@ -2,11 +2,13 @@ import React, { useState } from 'react';
 import { Calendar, LogOut } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { useToast } from '../../contexts/ToastContext';
 import ConfirmationDialog from './ConfirmationDialog'; // Import the confirmation dialog
 
 const Header: React.FC = () => {
   const navigate = useNavigate();
   const { logout, user } = useAuth();
+  const { showSuccess } = useToast();
   const [showLogoutConfirmation, setShowLogoutConfirmation] = useState(false);
   
   const handleLogoutClick = () => {
@@ -16,6 +18,7 @@ const Header: React.FC = () => {
   const handleLogoutConfirm = () => {
     setShowLogoutConfirmation(false);
     logout();
+    showSuccess('Logged Out Successfully', 'You have been logged out of your account');
   };
 
   const handleLogoutCancel = () => {

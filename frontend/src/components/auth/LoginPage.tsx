@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Calendar, User, Lock, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
+import { API_BASE_URL } from '../../config/environment';
 
 interface LoginPageProps {
   onSwitchToSignup?: () => void;
@@ -10,7 +11,7 @@ interface LoginPageProps {
 }
 
 const LoginPage: React.FC<LoginPageProps> = ({ onSwitchToSignup, onForgotPassword }) => {
-  const { login, googleLogin, isLoading } = useAuth();
+  const { login, isLoading } = useAuth();
   const navigate = useNavigate();
   const { showError } = useToast();
   const [formData, setFormData] = useState({
@@ -97,17 +98,18 @@ const LoginPage: React.FC<LoginPageProps> = ({ onSwitchToSignup, onForgotPasswor
     }
   };
 
-  const handleGoogleLogin = async () => {
-    setIsSubmitting(true);
+  const handleGoogleLogin = () => {
     try {
-      const success = await googleLogin();
-      if (!success) {
-        setErrors({ general: 'Google login failed. Please try again.' });
-      }
+      console.log('🔐 Initiating Google OAuth login...');
+      
+      // Direct redirect to Google OAuth endpoint
+      const googleAuthUrl = `${API_BASE_URL}/api/auth/google`;
+      console.log('🔗 Redirecting to:', googleAuthUrl);
+      
+      window.location.href = googleAuthUrl;
     } catch (error) {
-      setErrors({ general: 'An error occurred. Please try again.' });
-    } finally {
-      setIsSubmitting(false);
+      console.error('❌ Google login error:', error);
+      setErrors({ general: 'Google login failed. Please try again.' });
     }
   };
 
@@ -142,7 +144,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onSwitchToSignup, onForgotPasswor
                 disabled={isSubmitting}
               />
             </div>
-            {errors.email && <p className="mt-1 text-sm text-red-600">{errors.email}</p>}
+            {errors.email && <p className="mt-1 text-sm text-left text-red-600">{errors.email}</p>}
           </div>
 
           <div>
@@ -168,7 +170,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onSwitchToSignup, onForgotPasswor
                 {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
               </button>
             </div>
-            {errors.password && <p className="mt-1 text-sm text-red-600">{errors.password}</p>}
+            {errors.password && <p className="mt-1 text-sm text-left text-red-600">{errors.password}</p>}
           </div>
 
           <div className="flex items-center justify-between">

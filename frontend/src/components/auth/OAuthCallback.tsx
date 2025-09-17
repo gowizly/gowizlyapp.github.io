@@ -2,16 +2,72 @@ import React, { useEffect, useState } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { CheckCircle, AlertCircle, Loader } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { API_BASE_URL } from '../../config/environment';
+import axios from 'axios';
 
 const OAuthCallback: React.FC = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { handleOAuthCallback } = useAuth();
+  const { setUser, setToken, setIsEmailVerified } = useAuth();
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [message, setMessage] = useState('Processing authentication...');
 
+  // Direct OAuth handling function
+  const handleOAuthCallback = async (token: string): Promise<boolean> => {
+    try {
+      console.log('🔐 Processing Google OAuth callback...');
+      
+      // Fetch user data with the provided token
+      const response = await axios.get(`${API_BASE_URL}/api/auth/me`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      console.log('👤 User profile response:', response.status);
+
+      if (!response.data || !response.data.success) {
+        console.error('❌ Failed to fetch user profile:', response.status, response.data);
+        return false;
+      }
+
+      const userData = response.data.data.user;
+      console.log('👤 User profile data:', userData);
+      
+      // Set auth state using AuthContext
+      const user = {
+        id: userData.id.toString(),
+        name: userData.username || userData.name || userData.email.split('@')[0],
+        email: userData.email,
+        username: userData.username,
+        address: userData.address || '',
+        isVerified: userData.isVerified,
+        createdAt: userData.createdAt,
+        updatedAt: userData.updatedAt,
+        childrenCount: userData.children ? userData.children.length : (userData.childrenCount || 0)
+      };
+
+      setUser(user);
+      setToken(token);
+      setIsEmailVerified(true); // OAuth users are verified by default
+      
+      console.log('✅ Google OAuth authentication successful');
+      return true;
+    } catch (error: any) {
+      console.error('❌ Error in OAuth callback:', error);
+      
+      if (error.response) {
+        console.error('Response status:', error.response.status);
+        console.error('Response data:', error.response.data);
+      }
+      
+      return false;
+    }
+  };
+
   useEffect(() => {
-    const handleCallback = async () => {
+    const processCallback = async () => {
       try {
         const token = searchParams.get('token');
         const error = searchParams.get('error');
@@ -38,7 +94,7 @@ const OAuthCallback: React.FC = () => {
           return;
         }
 
-        // Process OAuth callback using AuthContext
+        // Process OAuth callback directly
         console.log('🔄 Processing OAuth callback...');
         const success = await handleOAuthCallback(token);
 
@@ -64,8 +120,8 @@ const OAuthCallback: React.FC = () => {
       }
     };
 
-    handleCallback();
-  }, [searchParams, navigate, handleOAuthCallback]);
+    processCallback();
+  }, [searchParams, navigate]);
 
   const getErrorMessage = (error: string): string => {
     switch (error) {

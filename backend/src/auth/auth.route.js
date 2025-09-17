@@ -11,7 +11,8 @@ import {
   handleOAuthCallback,
   handleGoogleCallback,
   updateUserProfile,
-  deleteUserAccount
+  deleteUserAccount,
+  debugAuthStatus,
 } from "./auth.controller.js";
 import passport from "passport";
 import { 
@@ -42,6 +43,10 @@ router.post("/forgot-password", resetPasswordLimiter, validateForgotPassword, fo
 router.get("/reset-password/:token", validateResetToken);
 router.post("/reset-password/:token", authLimiter, validateResetPassword, resetPassword);
 
+router.get("/debug/status", debugAuthStatus);
+
+// Also add a debug version of the /me endpoint
+router.get("/debug/me", authenticateToken, getCurrentUser);
 // Protected Routes - User Profile Management
 router.get("/profile", authenticateToken, getCurrentUser);
 router.patch("/profile", authenticateToken, authLimiter, validateUserProfileUpdate, updateUserProfile); 
@@ -66,31 +71,12 @@ if (process.env.NODE_ENV === 'development') {
   });
 }
 
-// Google OAuth Routes
+// Improved Google OAuth Routes
 router.get("/google", passport.authenticate("google", { scope: ["profile", "email"] }));
 
 // Updated Google OAuth callback with consistent JSON responses
 router.get("/google/callback", 
-  (req, res, next) => {
-    passport.authenticate("google", (err, user, info) => {
-      if (err) {
-        logError("Google OAuth authentication error", err);
-        return res.status(500).json({
-          success: false,
-          msg: "Authentication error"
-        });
-      }
-      if (!user) {
-        logWarn("Google OAuth authentication failed", { info });
-        return res.status(400).json({
-          success: false,
-          msg: "Authentication failed"
-        });
-      }
-      req.user = user;
-      next();
-    })(req, res, next);
-  },
+  passport.authenticate("google", { failureRedirect: `${process.env.CLIENT_URL}/auth/error?error=oauth_failed` }),
   handleGoogleCallback
 );
 

@@ -138,12 +138,32 @@ const SignupPage: React.FC<SignupPageProps> = ({ onSwitchToLogin }) => {
   };
 
   const handleInputChange = (field: string, value: string | boolean) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    const updatedFormData = { ...formData, [field]: value };
+    setFormData(updatedFormData);
     setFieldTouched(prev => ({ ...prev, [field]: true }));
     
     // Real-time validation for touched fields
     if (fieldTouched[field] || errors[field]) {
       validateField(field, value);
+    }
+    
+    // Special case: when password changes, also validate confirmPassword if it's been touched
+    if (field === 'password' && (fieldTouched.confirmPassword || errors.confirmPassword)) {
+      // Use updated password value for validation
+      const confirmPasswordErrors = validatePasswordConfirmation(value as string, updatedFormData.confirmPassword).map(e => e.message);
+      setErrors(prev => ({
+        ...prev,
+        confirmPassword: confirmPasswordErrors[0] || ''
+      }));
+    }
+    
+    // Special case: when confirmPassword changes, validate it against the current password
+    if (field === 'confirmPassword' && (fieldTouched.confirmPassword || errors.confirmPassword)) {
+      const confirmPasswordErrors = validatePasswordConfirmation(updatedFormData.password, value as string).map(e => e.message);
+      setErrors(prev => ({
+        ...prev,
+        confirmPassword: confirmPasswordErrors[0] || ''
+      }));
     }
   };
 
@@ -203,7 +223,7 @@ const SignupPage: React.FC<SignupPageProps> = ({ onSwitchToLogin }) => {
                 {getFieldValidationIcon('username')}
               </div>
             </div>
-            {errors.username && <p className="mt-1 text-sm text-red-600">{errors.username}</p>}
+            {errors.username && <p className="mt-1 text-sm text-left text-red-600">{errors.username}</p>}
           </div>
 
           <div>
@@ -225,7 +245,7 @@ const SignupPage: React.FC<SignupPageProps> = ({ onSwitchToLogin }) => {
                 {getFieldValidationIcon('email')}
               </div>
             </div>
-            {errors.email && <p className="mt-1 text-sm text-red-600">{errors.email}</p>}
+            {errors.email && <p className="mt-1 text-sm text-left text-red-600">{errors.email}</p>}
           </div>
 
           <div>
@@ -253,14 +273,17 @@ const SignupPage: React.FC<SignupPageProps> = ({ onSwitchToLogin }) => {
               </button>
             </div>
             
+            {/* Password Error Message */}
+            {errors.password && <p className="mt-1 text-sm text-left text-red-600">{errors.password}</p>}
+            
             {/* Password Requirements */}
             {formData.password && passwordStrength.feedback.length > 0 && (
               <div className="mt-2 p-3 bg-red-50 border border-red-200 rounded-lg">
-                <p className="text-sm font-medium text-blue-800 mb-1">Password Requirements:</p>
-                <ul className="text-sm text-blue-700 space-y-1">
+                <p className="text-sm font-medium text-red-800 mb-1">Password Requirements:</p>
+                <ul className="text-sm text-red-700 space-y-1">
                   {passwordStrength.feedback.map((feedback, index) => (
                     <li key={index} className="flex items-center">
-                      <XCircle className="w-3 h-3 text-blue-600 mr-2 flex-shrink-0" />
+                      <XCircle className="w-3 h-3 text-red-600 mr-2 flex-shrink-0" />
                       {feedback}
                     </li>
                   ))}
@@ -300,8 +323,8 @@ const SignupPage: React.FC<SignupPageProps> = ({ onSwitchToLogin }) => {
                 {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
               </button>
             </div>
-            {errors.confirmPassword && <p className="mt-1 text-sm text-red-600">{errors.confirmPassword}</p>}
-            {fieldTouched.confirmPassword && !errors.confirmPassword && formData.confirmPassword && (
+            {errors.confirmPassword && <p className="mt-1 text-sm text-left text-red-600">{errors.confirmPassword}</p>}
+            {fieldTouched.confirmPassword && !errors.confirmPassword && formData.confirmPassword && formData.password === formData.confirmPassword && (
               <p className="mt-1 text-sm text-green-600 flex items-center">
                 <CheckCircle className="w-4 h-4 mr-1" />
                 Passwords match!
@@ -339,7 +362,7 @@ const SignupPage: React.FC<SignupPageProps> = ({ onSwitchToLogin }) => {
                 </button>
               </span>
             </label>
-            {errors.acceptTerms && <p className="mt-1 text-sm text-red-600">{errors.acceptTerms}</p>}
+            {errors.acceptTerms && <p className="mt-1 text-sm text-left text-red-600">{errors.acceptTerms}</p>}
           </div>
 
           <button
