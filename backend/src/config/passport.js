@@ -3,35 +3,35 @@ import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import prisma from "./db.js";
 
 // Helper function to generate a unique username
-async function generateUniqueUsername(baseUsername) {
-  // Normalize the base username: replace spaces with underscores, remove special chars
-  let normalizedBase = baseUsername
-    .replace(/\s+/g, '_')  // Replace spaces with underscores
-    .replace(/[^a-zA-Z0-9_\-\.]/g, '') // Remove special characters except underscore, hyphen, dot
-    .toLowerCase(); // Convert to lowercase
+// async function generateUniqueUsername(baseUsername) {
+//   // Normalize the base username: replace spaces with underscores, remove special chars
+//   let normalizedBase = baseUsername
+//     .replace(/\s+/g, '_')  // Replace spaces with underscores
+//     .replace(/[^a-zA-Z0-9_\-\.]/g, '') // Remove special characters except underscore, hyphen, dot
+//     .toLowerCase(); // Convert to lowercase
   
-  // Ensure it's not empty after normalization
-  if (!normalizedBase || normalizedBase.length < 3) {
-    normalizedBase = 'user';
-  }
+//   // Ensure it's not empty after normalization
+//   if (!normalizedBase || normalizedBase.length < 3) {
+//     normalizedBase = 'user';
+//   }
   
-  let username = normalizedBase;
-  let counter = 1;
+//   let username = normalizedBase;
+//   let counter = 1;
   
-  // Keep checking if username exists and increment counter if it does
-  while (true) {
-    const existingUser = await prisma.user.findUnique({
-      where: { username }
-    });
+//   // Keep checking if username exists and increment counter if it does
+//   while (true) {
+//     const existingUser = await prisma.user.findUnique({
+//       where: { username }
+//     });
     
-    if (!existingUser) {
-      return username;
-    }
+//     if (!existingUser) {
+//       return username;
+//     }
     
-    username = `${normalizedBase}${counter}`;
-    counter++;
-  }
-}
+//     username = `${normalizedBase}${counter}`;
+//     counter++;
+//   }
+// }
 
 passport.use(new GoogleStrategy({
   clientID: process.env.GOOGLE_CLIENT_ID,
@@ -76,17 +76,17 @@ passport.use(new GoogleStrategy({
 
     // First time Google user - create new account
     console.log("Google OAuth - Creating new user (first time)");
-    const uniqueUsername = await generateUniqueUsername(profile.displayName);
+    // const uniqueUsername = await generateUniqueUsername(profile.displayName);
     
     user = await prisma.user.create({
       data: {
         googleId: profile.id,
         email: profile.emails[0].value,
-        username: uniqueUsername,
+        username: profile.displayName,
         isVerified: true
       }
     });
-    console.log("Google OAuth - New user created and signed in:", user.id, "with username:", uniqueUsername);
+    // console.log("Google OAuth - New user created and signed in:", user.id, "with username:", uniqueUsername);
 
     return done(null, user);
   } catch (err) {

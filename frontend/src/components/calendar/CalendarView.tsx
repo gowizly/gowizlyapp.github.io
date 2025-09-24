@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
 import { Event } from '../../services/eventApi';
 import EventTypeLegend from './EventTypeLegend';
@@ -36,6 +36,9 @@ const CalendarView: React.FC<CalendarViewProps> = ({
   onAddEvent,
   onEventClick
 }) => {
+  const [viewMode, setViewMode] = useState<'month' | 'week' | 'day'>('month');
+  const [hoveredEventId, setHoveredEventId] = useState<number | null>(null);
+
   const eventTypes = {
     ASSIGNMENT_DUE: { color: 'bg-purple-500', label: 'Assignment Due' },
     EXTRACURRICULAR: { color: 'bg-red-500', label: 'Extracurricular Event' },
@@ -49,11 +52,30 @@ const CalendarView: React.FC<CalendarViewProps> = ({
     OTHER: { color: 'bg-gray-500', label: 'Other' }
   };
 
-  const eventPriorities = {
-    LOW: { label: 'Low', color: 'text-gray-500' },
-    MEDIUM: { label: 'Medium', color: 'text-yellow-500' },
-    HIGH: { label: 'High', color: 'text-red-500' },
-    URGENT: { label: 'Urgent', color: 'text-red-700' }
+  const getEventsForDate = (date: Date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const dateStr = `${year}-${month}-${day}`;
+
+    const dayEvents = eventsByDate[dateStr] || [];
+
+    const filteredEvents = events.filter(event => {
+      const eventDate = new Date(event.startDate);
+      return eventDate.getFullYear() === date.getFullYear() &&
+             eventDate.getMonth() === date.getMonth() &&
+             eventDate.getDate() === date.getDate();
+    });
+
+    return [...dayEvents, ...filteredEvents].filter((event, index, self) => index === self.findIndex(e => e.id === event.id));
+  };
+
+  const navigate = (amount: number) => {
+    const newDate = new Date(selectedDate);
+    if (viewMode === 'month') newDate.setMonth(selectedDate.getMonth() + amount);
+    if (viewMode === 'week') newDate.setDate(selectedDate.getDate() + amount * 7);
+    if (viewMode === 'day') newDate.setDate(selectedDate.getDate() + amount);
+    onDateChange(newDate);
   };
 
   const getDaysInMonth = (date: Date) => {
@@ -62,287 +84,140 @@ const CalendarView: React.FC<CalendarViewProps> = ({
     const firstDay = new Date(year, month, 1);
     const lastDay = new Date(year, month + 1, 0);
     const firstDayWeek = firstDay.getDay();
-    
+
     const days = [];
-    
-    // Previous month's days
     for (let i = firstDayWeek - 1; i >= 0; i--) {
       const day = new Date(firstDay);
       day.setDate(day.getDate() - i - 1);
       days.push({ date: day, isCurrentMonth: false });
     }
-    
-    // Current month's days
     for (let i = 1; i <= lastDay.getDate(); i++) {
       const day = new Date(year, month, i);
       days.push({ date: day, isCurrentMonth: true });
     }
-    
     return days;
   };
 
-  // Fixed getEventsForDate function - handles timezone issues
-  const getEventsForDate = (date: Date) => {
-    // Create date string in local timezone, not UTC
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    const dateStr = `${year}-${month}-${day}`;
-    
-    // Use eventsByDate structure if available
-    const dayEvents = eventsByDate[dateStr] || [];
-    
-    // Also filter events array as fallback, using local date comparison
-    const filteredEvents = events.filter(event => {
-      const eventDate = new Date(event.startDate);
-      const eventYear = eventDate.getFullYear();
-      const eventMonth = eventDate.getMonth();
-      const eventDay = eventDate.getDate();
-      
-      return eventYear === date.getFullYear() && 
-             eventMonth === date.getMonth() && 
-             eventDay === date.getDate();
+  const getWeekDates = (date: Date) => {
+    const start = new Date(date);
+    start.setDate(date.getDate() - date.getDay());
+    return Array.from({ length: 7 }).map((_, i) => {
+      const d = new Date(start);
+      d.setDate(start.getDate() + i);
+      return d;
     });
-    
-    // Combine and deduplicate
-    const allEvents = [...dayEvents, ...filteredEvents];
-    const uniqueEvents = allEvents.filter((event, index, self) => 
-      index === self.findIndex(e => e.id === event.id)
-    );
-    
-    if (uniqueEvents.length > 0) {
-      console.log(`📅 Found ${uniqueEvents.length} events for ${dateStr} (Local: ${date.toLocaleDateString()})`);
-    }
-    
-    return uniqueEvents;
   };
 
-  const navigateMonth = (direction: number) => {
-    const newDate = new Date(selectedDate);
-    newDate.setMonth(selectedDate.getMonth() + direction);
-    onDateChange(newDate);
-  };
+  const currentDates =
+    viewMode === 'month' ? getDaysInMonth(selectedDate) :
+    viewMode === 'week' ? getWeekDates(selectedDate).map(d => ({ date: d, isCurrentMonth: true })) :
+    [{ date: selectedDate, isCurrentMonth: true }];
 
+  const renderGrid = () => (
+    <div className={`grid ${viewMode === 'month' ? 'grid-cols-7' : viewMode === 'week' ? 'grid-cols-7' : 'grid-cols-1'} gap-4`}>
+      {viewMode === 'month' && ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d => (
+        <div key={d} className="text-center font-semibold text-gray-600 py-2">{d}</div>
+      ))}
 
-  const getChildDisplayName = (event: Event): string => {
-    // If event has children array (new format), show child names
-    if (event.children && event.children.length > 0) {
-      if (event.children.length === 1) {
-        return event.children[0].name;
-      } else {
-        return `${event.children.length} children`;
-      }
-    }
-    
-    // Legacy support for old childId format
-    if (event.childId === -1) return 'All Children';
-    if (event.childId === 0) return 'My Events';
-    
-    const child = children.find(c => c.id === event.childId);
-    return child?.name || 'Unknown Child';
-  };
+      {currentDates.map((dayObj, index) => {
+        const dayEvents = getEventsForDate(dayObj.date);
+        return (
+          <div
+            key={index}
+            className={`min-h-24 p-2 border rounded-lg ${dayObj.isCurrentMonth ? 'bg-white' : 'bg-gray-50'} hover:bg-gray-50 transition-colors cursor-pointer`}
+            onClick={() => console.log('📅 Quick add event for date:', dayObj.date.toISOString().split('T')[0])}
+          >
+            <div className={`text-sm font-medium ${dayObj.isCurrentMonth ? 'text-gray-900' : 'text-gray-400'}`}>
+              {dayObj.date.getDate()}
+            </div>
+            <div className="space-y-1 mt-2">
+              {dayEvents.slice(0, 3).map(event => (
+                <div
+                  key={event.id}
+                  className={`relative text-xs text-white px-2 py-1 rounded cursor-pointer ${eventTypes[event.type as keyof typeof eventTypes]?.color || 'bg-gray-500'}`}
+                  onMouseEnter={() => setHoveredEventId(event.id)}
+                  onMouseLeave={() => setHoveredEventId(null)}
+                  onClick={(e) => { e.stopPropagation(); onEventClick?.(event); }}
+                >
+                  {event.title}
 
-  const days = getDaysInMonth(selectedDate);
-
-  // Simple calendar summary
-  const currentMonth = selectedDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-  const eventsInCurrentMonth = events.filter(event => {
-    const eventDate = new Date(event.startDate);
-    return eventDate.getMonth() === selectedDate.getMonth() && 
-           eventDate.getFullYear() === selectedDate.getFullYear();
-  });
-  
-  // Enhanced debugging for calendar view
-  console.log(`📅 Calendar View Debug:`);
-  console.log(`   Current Month: ${currentMonth}`);
-  console.log(`   Total Events Loaded: ${events.length}`);
-  console.log(`   Events in Current Month: ${eventsInCurrentMonth.length}`);
-  console.log(`   Selected Child: ${selectedChild?.name || 'All Children'}`);
-  
-  // Show all event dates for debugging
-  if (events.length > 0) {
-    const eventDates = events.map(e => {
-      const date = new Date(e.startDate);
-      return {
-        title: e.title,
-        date: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-        monthYear: date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
-      };
-    });
-    console.log(`📅 All Available Events:`, eventDates);
-    
-    if (eventsInCurrentMonth.length === 0) {
-      console.log(`⚠️ No events in ${currentMonth}. Events are in other months.`);
-    }
-  }
+                  {hoveredEventId === event.id && (
+                    <div className="absolute z-50 left-1/2 transform -translate-x-1/2 mt-2 w-56 bg-white border border-gray-200 rounded-lg shadow-lg p-3 text-gray-800 text-sm">
+                      <div className="font-semibold mb-1">{event.title}</div>
+                      <div className="mb-1">{event.description || 'No description'}</div>
+                      <div className="text-gray-500 text-xs">🕒 {new Date(event.startDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+                    </div>
+                  )}
+                </div>
+              ))}
+              {dayEvents.length > 3 && <div className="text-xs text-gray-500">+{dayEvents.length - 3} click for more</div>}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
 
   return (
     <div className="p-6">
-      {/* Calendar Header */}
+      {/* Header */}
       <div className="flex justify-between items-center mb-6">
-        <div className="flex items-center space-x-4">
-          <h2 className="text-2xl font-bold text-gray-800">
-            {selectedDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
-          </h2>
-          <div className="flex space-x-2">
-            <button
-              onClick={() => navigateMonth(-1)}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-              title="Previous month"
-            >
-              <ChevronLeft className="w-5 h-5" />
-            </button>
-            <button
-              onClick={() => navigateMonth(1)}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-              title="Next month"
-            >
-              <ChevronRight className="w-5 h-5" />
-            </button>
-            {isLoadingEvents && (
-              <div className="flex items-center space-x-2 text-blue-600">
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-                <span className="text-sm">Loading events...</span>
-              </div>
-            )}
-            {!isLoadingEvents && eventsInCurrentMonth.length > 0 && (
-              <div className="px-3 py-1 bg-green-100 text-green-700 rounded-lg text-sm font-medium">
-                {eventsInCurrentMonth.length} events this month
-              </div>
-            )}
-          </div>
-        </div>
-        
-        {/* Controls */}
+        {/* Left: Child Dropdown */}
         <div className="flex items-center space-x-4">
           <select
             value={selectedChild?.id?.toString() || ''}
             onChange={(e) => {
               const value = e.target.value;
-              if (value === '') {
-                onChildChange(null);
-              } else {
+              if (value === '') onChildChange(null);
+              else {
                 const childId = parseInt(value);
                 const child = children.find(c => c.id === childId);
                 onChildChange(child || null);
               }
             }}
             className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+            title="Select child to filter events"
           >
             <option value="">All Children</option>
             {children.map(child => (
               <option key={child.id} value={child.id?.toString() || ''}>{child.name}</option>
             ))}
           </select>
-          
+        </div>
+
+        {/* Right: Month & Navigation & Add Event */}
+        <div className="flex items-center space-x-4">
+          <h2 className="text-2xl font-bold text-gray-800">
+            {selectedDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+          </h2>
+          <button onClick={() => navigate(-1)} className="p-2 hover:bg-gray-100 rounded-lg">
+            <ChevronLeft className="w-5 h-5" />
+          </button>
+          <button onClick={() => navigate(1)} className="p-2 hover:bg-gray-100 rounded-lg">
+            <ChevronRight className="w-5 h-5" />
+          </button>
+          <select
+            value={viewMode}
+            onChange={(e) => setViewMode(e.target.value as any)}
+            className="px-3 py-2 border rounded"
+            title="Select view mode"
+          >
+            <option value="month">Month</option>
+            <option value="week">Week</option>
+            <option value="day">Day</option>
+          </select>
           <button
             onClick={onAddEvent}
-            className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors flex items-center space-x-2"
+            className="bg-purple-600 text-white px-4 py-2 rounded-lg flex items-center space-x-2"
+            title="Add a new event"
           >
-            <Plus className="w-5 h-5" />
-            <span>Add Event</span>
+            <Plus className="w-5 h-5" /> Add Event
           </button>
         </div>
       </div>
 
-      {/* Day Headers */}
-      <div className="grid grid-cols-7 gap-4 mb-4">
-        {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-          <div key={day} className="text-center font-semibold text-gray-600 py-2">
-            {day}
-          </div>
-        ))}
-      </div>
-
       {/* Calendar Grid */}
-      <div className="grid grid-cols-7 gap-4">
-        {days.map((day, index) => {
-          const dayEvents = getEventsForDate(day.date);
-          return (
-            <div
-              key={index}
-              className={`min-h-24 p-2 border rounded-lg ${
-                day.isCurrentMonth ? 'bg-white' : 'bg-gray-50'
-              } hover:bg-gray-50 transition-colors cursor-pointer`}
-              onClick={() => {
-                // TODO: Implement quick event creation for clicked date
-                console.log('📅 Quick add event for date:', day.date.toISOString().split('T')[0]);
-              }}
-              title={`Click to add event for ${day.date.toLocaleDateString()}`}
-            >
-              <div className={`text-sm font-medium ${
-                day.isCurrentMonth ? 'text-gray-900' : 'text-gray-400'
-              }`}>
-                {day.date.getDate()}
-              </div>
-              <div className="space-y-1 mt-2">
-                {dayEvents.slice(0, 2).map(event => (
-                  <div
-                    key={event.id}
-                    className={`text-xs text-white px-2 py-1 rounded cursor-pointer ${
-                      eventTypes[event.type as keyof typeof eventTypes]?.color || 'bg-gray-500'
-                    }`}
-                    title={`${event.title}\n${event.description || 'No description'}\n🕒 ${new Date(event.startDate).toLocaleDateString()} ${event.isAllDay ? '(All Day)' : new Date(event.startDate).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}\n📊 ${eventPriorities[event.priority]?.label || 'Medium'} Priority\n👤 ${getChildDisplayName(event)}\nClick to edit`}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (onEventClick) {
-                        onEventClick(event);
-                      }
-                    }}
-                  >
-                    {event.title.length > 12 ? event.title.substring(0, 12) + '...' : event.title}
-                  </div>
-                ))}
-                {dayEvents.length > 2 && (
-                  <div className="text-xs text-gray-500">
-                    +{dayEvents.length - 2} more
-                  </div>
-                )}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Debug Panel - Show event locations when no events in current month */}
-      {/* {events.length > 0 && eventsInCurrentMonth.length === 0 && (
-        <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-          <h3 className="text-lg font-semibold text-yellow-800 mb-3">
-            📅 Events Available ({events.length} total)
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-            {events.slice(0, 8).map((event, index) => {
-              const eventDate = new Date(event.startDate);
-              const monthYear = eventDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-              return (
-                <div
-                  key={index}
-                  className="bg-white p-3 rounded-lg border border-yellow-300 cursor-pointer hover:bg-yellow-100 transition-colors"
-                  onClick={() => onDateChange(eventDate)}
-                  title={`Click to navigate to ${monthYear}`}
-                >
-                  <div className="font-medium text-gray-800 truncate">{event.title}</div>
-                  <div className="text-sm text-gray-600">
-                    {eventDate.toLocaleDateString('en-US', { 
-                      month: 'short', 
-                      day: 'numeric', 
-                      year: 'numeric' 
-                    })}
-                  </div>
-                  <div className="text-xs text-blue-600 mt-1">
-                    Click to view in {monthYear}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-          {events.length > 8 && (
-            <div className="mt-3 text-sm text-gray-600">
-              ... and {events.length - 8} more events
-            </div>
-          )}
-        </div>
-      )} */}
+      {renderGrid()}
 
       {/* Event Type Legend */}
       <EventTypeLegend />

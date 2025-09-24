@@ -39,8 +39,8 @@ export const getVerificationEmailTemplate = (username, verifyLink) => {
               .button {
                   display: inline-block;
                   padding: 16px 32px;
-                  background: #4f46e5;
-                  color: white;
+                  background: #9333ea;
+                  color: white !important;
                   text-decoration: none;
                   border-radius: 8px;
                   font-weight: 600;
@@ -50,7 +50,7 @@ export const getVerificationEmailTemplate = (username, verifyLink) => {
                   box-shadow: 0 4px 15px rgba(79, 70, 229, 0.3);
               }
               .button:hover {
-                  background: #4338ca;
+                  background: #9333ea;
                   transform: translateY(-2px);
                   box-shadow: 0 6px 20px rgba(79, 70, 229, 0.4);
               }

@@ -20,10 +20,10 @@ export const validateRequest = (req, res, next) => {
 export const validateRegistration = [
   body("username")
     .trim()
-    .isLength({ min: 3, max: 30 })
-    .withMessage("Username must be between 3 and 30 characters")
-    .matches(/^[a-zA-Z0-9_]+$/)
-    .withMessage("Username can only contain letters, numbers, and underscores"),
+    .isLength({ min: 3, max: 30 }),
+    // .withMessage("Username must be between 3 and 30 characters")
+    // .matches(/^[a-zA-Z0-9_]+$/)
+    // .withMessage("Username can only contain letters, numbers, and underscores"),
   
   body("email")
     .isEmail()
@@ -186,7 +186,7 @@ export const validateChild = [
       const actualAge = (monthDiff < 0 || (monthDiff === 0 && dayDiff < 0)) ? age - 1 : age;
       
       // Validate exclusive age range: must be > 0 and < 21
-      if (actualAge >= 21) {
+      if (actualAge > 21) {
         throw new Error("Child must be under 21 years old");
       }
       
@@ -252,7 +252,7 @@ export const validateChildUpdate = [
         const actualAge = (monthDiff < 0 || (monthDiff === 0 && dayDiff < 0)) ? age - 1 : age;
         
         // Validate exclusive age range: must be > 0 and < 21
-        if (actualAge >= 21) {
+        if (actualAge > 21) {
           throw new Error("Child must be under 21 years old");
         }
       }

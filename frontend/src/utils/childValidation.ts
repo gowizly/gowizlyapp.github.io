@@ -84,7 +84,7 @@ export const validateChild = (childData: Partial<Child>): ValidationResult => {
         const actualAge = (monthDiff < 0 || (monthDiff === 0 && dayDiff < 0)) ? age - 1 : age;
         
         // Age must be greater than 0 and less than 21 (exclusive range)
-        if (actualAge >= 21) {
+        if (actualAge > 21) {
           errors.push({ field: 'birthDate', message: 'Child must be under 21 years old' });
         }
         // Note: actualAge < 0 is not possible since we already checked birthDate < today
@@ -206,7 +206,7 @@ export const validateBirthDate = (birthDate: string): ValidationError | null => 
   const actualAge = (monthDiff < 0 || (monthDiff === 0 && dayDiff < 0)) ? age - 1 : age;
   
   // Age must be greater than 0 and less than 21 (exclusive range)
-  if (actualAge >= 21) {
+  if (actualAge > 21) {
     return { field: 'birthDate', message: 'Child must be under 21 years old' };
   }
   

@@ -6,7 +6,7 @@ import axios, { AxiosResponse } from 'axios';
 export interface EventChildRef { id: number; name: string }
 
 export interface Event {
-  id?: number;
+  id: number;
   title: string;
   description?: string;
   startDate: string; // ISO string

@@ -345,21 +345,24 @@ const SignupPage: React.FC<SignupPageProps> = ({ onSwitchToLogin }) => {
               />
               <span className="text-sm text-gray-700">
                 I agree to the{' '}
-                <button 
-                  type="button" 
-                  onClick={() => setShowTermsModal(true)}
+                <a
+                  target='_blank'
+                  href='https://gowizly.com/terms.html'
+                  rel='nooperner noreferrer'
+                  
                   className="text-purple-600 hover:text-purple-700 underline"
                 >
                   Terms and Conditions
-                </button>{' '}
+                </a>{' '}
                 and{' '}
-                <button 
-                  type="button"
-                  onClick={() => setShowPrivacyModal(true)} 
+                <a
+                  target='_blank'
+                  href='https://gowizly.com/privacy.html '
+                  rel='nooperner noreferrer'
                   className="text-purple-600 hover:text-purple-700 underline"
                 >
                   Privacy Policy
-                </button>
+                </a>
               </span>
             </label>
             {errors.acceptTerms && <p className="mt-1 text-sm text-left text-red-600">{errors.acceptTerms}</p>}

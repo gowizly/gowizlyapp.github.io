@@ -33,19 +33,19 @@ export const validateUsername = (username: string): ValidationError[] => {
   }
 
   // Check for valid characters (letters, numbers, underscore, hyphen)
-  if (!/^[a-zA-Z0-9_-]+$/.test(trimmedUsername)) {
-    errors.push({ field: 'username', message: 'Username can only contain letters, numbers, underscores, and hyphens' });
-  }
+  // if (!/^[a-zA-Z0-9_-]+$/.test(trimmedUsername)) {
+  //   errors.push({ field: 'username', message: 'Username can only contain letters, numbers, underscores, and hyphens' });
+  // }
 
-  // Cannot start with number
-  if (/^[0-9]/.test(trimmedUsername)) {
-    errors.push({ field: 'username', message: 'Username cannot start with a number' });
-  }
+  // // Cannot start with number
+  // if (/^[0-9]/.test(trimmedUsername)) {
+  //   errors.push({ field: 'username', message: 'Username cannot start with a number' });
+  // }
 
-  // Cannot be only numbers
-  if (/^[0-9]+$/.test(trimmedUsername)) {
-    errors.push({ field: 'username', message: 'Username cannot be only numbers' });
-  }
+  // // Cannot be only numbers
+  // if (/^[0-9]+$/.test(trimmedUsername)) {
+  //   errors.push({ field: 'username', message: 'Username cannot be only numbers' });
+  // }
 
   return errors;
 };

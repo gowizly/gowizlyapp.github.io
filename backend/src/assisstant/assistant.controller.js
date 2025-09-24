@@ -50,6 +50,8 @@ export const analyzeEmail = async (req, res) => {
 
     // Analyze email content for events
     const analysisResult = await assistantService.analyzeEmailContent(emailContent);
+
+    console.log("Email Parsed Data Nischay",analysisResult);
     
     logDebug('Email analysis completed', { 
       userId: req.user.id, 
