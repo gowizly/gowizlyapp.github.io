@@ -2,6 +2,22 @@ import { logDebug, logInfo, logWarn } from "../utils/logger.js";
 import fs from "fs";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
+// import {GoogleGenAI} from '@google/genai';
+
+// const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+
+// const ai = new GoogleGenAI({apiKey: GEMINI_API_KEY});
+
+// async function main() {
+//   const response = await ai.models.generateContent({
+//     model: 'gemini-2.0-flash-001',
+//     contents: 'Why is the sky blue?',
+//   });
+//   console.log(response.text);
+// }
+
+// main();
+
 // Initialize Gemini AI
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
@@ -228,7 +244,7 @@ const analyzeEmailContent = async (emailContent) => {
   try {
     logDebug('Starting Gemini email content analysis', { contentLength: emailContent.length });
     
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-001" });
     
     const prompt = `
 Analyze the following email content and extract event details for a family calendar app. If any events, meetings, assignments, deadlines, or important dates are mentioned, extract them in the exact JSON format below.
@@ -356,7 +372,7 @@ const analyzePhotoForEvents = async (imageBuffer, mimeType = 'image/jpeg') => {
       throw new Error('Image buffer not provided');
     }
     
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-001" });
     
     // Convert image buffer to base64
     const base64Image = imageBuffer.toString('base64');
@@ -498,6 +514,24 @@ const getImageMimeType = (photoPath) => {
 const getEventTypeColor = (eventType) => {
   return EVENT_TYPE_COLORS[eventType] || EVENT_TYPE_COLORS.OTHER;
 };
+
+
+
+// async function testGemini() {
+//   try {
+//     const model = genAI.getGenerativeModel({
+//       model: "models/gemini-1.5-flash-latest",
+//       location: "us-central1"
+//     });
+//     const result = await model.generateContent("Reply with JSON: {\"ok\":true}");
+//     const response = await result.response;
+//     console.log("Gemini says:", await response.text());
+//   } catch (err) {
+//     console.error("Error:", err);
+//   }
+// }
+
+// testGemini();
 
 export default {
   analyzeEmailContent,
