@@ -16,6 +16,7 @@ const eventTypes = {
   EXAM: { color: 'bg-orange-500', label: 'Exam' },
   OTHER: { color: 'bg-gray-500', label: 'Other' }
 };
+
 interface ChildManagementProps {
   onBack?: () => void;
   onChildCreated?: () => void;
@@ -390,7 +391,7 @@ const ChildManagement: React.FC<ChildManagementProps> = ({ onBack, onChildCreate
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
-      {/* Header */}
+      {/* Header */} 
       <div className="max-w-6xl mx-auto">
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center space-x-4">
@@ -405,7 +406,7 @@ const ChildManagement: React.FC<ChildManagementProps> = ({ onBack, onChildCreate
           </button>
         </div>
 
-        {/* Notifications */}
+        {/* Notifications */} 
         {error && (
           <div className="mb-6 bg-red-100 border border-red-300 text-red-700 px-4 py-3 rounded-lg flex items-center space-x-2">
             <AlertCircle className="w-5 h-5" />
@@ -420,7 +421,7 @@ const ChildManagement: React.FC<ChildManagementProps> = ({ onBack, onChildCreate
           </div>
         )}
 
-        {/* Children Grid */}
+        {/* Children Grid */} 
         {children.length === 0 ? (
           <div className="text-center py-12">
             <Users className="w-16 h-16 text-gray-400 mx-auto mb-4" />
@@ -470,9 +471,10 @@ const ChildManagement: React.FC<ChildManagementProps> = ({ onBack, onChildCreate
                   <hr />
                   <div className='text-sm text-gray-600'>
                     <p className='font-semibold text-left'>Upcoming Events ({upcomingEvents.filter((event) => event.children?.some((c) => c.id === child.id)).length})</p>
-                    {/* filter upcoming events according to child id also show number of upcoming events */}
+                    
                     {upcomingEvents
                       .filter((event) => event.children?.some((c) => c.id === child.id))
+                      .slice(0, 10)
                       .map((event) => (
                         <div key={event.id}>
                           <div className="flex">
@@ -488,16 +490,30 @@ const ChildManagement: React.FC<ChildManagementProps> = ({ onBack, onChildCreate
                     {upcomingEvents.filter((event) => event.children?.some((c) => c.id === child.id)).length === 0 && (
                       <p className="text-gray-500">No upcoming events</p>
                     )}
-
                   </div>
                 </div>
               </div>
             ))}
           </div>
         )}
+
+        {/* Event Type Legend - Added at the bottom */}
+        {children.length > 0 && (
+          <div className="mt-8 bg-white rounded-lg shadow-md p-6 border border-gray-200">
+            <h3 className="text-lg font-semibold mb-4 text-gray-800">Event Types Legend</h3>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+              {Object.entries(eventTypes).map(([type, config]) => (
+                <div key={type} className="flex items-center space-x-2">
+                  <div className={`w-4 h-4 rounded ${config.color}`}></div>
+                  <span className="text-sm text-gray-600">{config.label}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Add/Edit Modal */}
+      {/* Add/Edit Modal */} 
       {showAddModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg shadow-2xl w-full max-w-md">
@@ -580,7 +596,7 @@ const ChildManagement: React.FC<ChildManagementProps> = ({ onBack, onChildCreate
                         </option>
                       ))}
                     </select>
-                    </div>
+                  </div>
                   {fieldTouched.gradeLevel && fieldErrors.gradeLevel && (
                     <div className="text-xs text-left text-red-500">
                       {fieldErrors.gradeLevel}

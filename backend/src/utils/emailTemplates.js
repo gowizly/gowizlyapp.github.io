@@ -289,8 +289,8 @@ export const getWelcomeEmailTemplate = (username) => {
               .button {
                   display: inline-block;
                   padding: 16px 32px;
-                  background: #4f46e5;
-                  color: white;
+                  background: #9333ea !important;
+                  color: white !important;
                   text-decoration: none;
                   border-radius: 8px;
                   font-weight: 600;

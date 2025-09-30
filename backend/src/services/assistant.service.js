@@ -253,7 +253,7 @@ For each event found, provide:
 - title: Clear, concise event title
 - description: Brief description of the event
 - startDate: Date in YYYY-MM-DD format
-- endDate: End date in YYYY-MM-DD format (if null consider next day)
+- endDate: End date in YYYY-MM-DD format; if no end date is mentioned, set Start Date As End Date
 - startTime: Time in HH:MM format (24-hour) or null if all-day
 - endTime: End time in HH:MM format (24-hour) or null
 - isAllDay: true/false
