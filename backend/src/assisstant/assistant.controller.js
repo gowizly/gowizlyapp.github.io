@@ -83,22 +83,26 @@ export const analyzeEmail = async (req, res) => {
 
     for (const eventData of analysisResult.events) {
       try {
-        if (eventData.type == "ASSIGNMENT_DUE") {
+        let NewEndDateAssignment;
+
+        if (eventData.type === "ASSIGNMENT_DUE") {
           let startDate = new Date(eventData.startDate);
-
-          // Example: Add 2 days
           startDate.setDate(startDate.getDate() + 1);
-
-          let NewEndDateAssignmet = startDate.toISOString();
-          console.log("Assignment_Due_Date",NewEndDateAssignmet);
+          NewEndDateAssignment = startDate.toISOString();
+          console.log("Assignment_Due_Date", NewEndDateAssignment);
+        } else {
+          NewEndDateAssignment = new Date(eventData.endDate).toISOString();
+          console.log("General_End_Date", NewEndDateAssignment);
         }
+
         // Prepare event data for creation
+        console.log("end_date", eventData.endDate);
         const eventPayload = {
           title: eventData.title,
           description:
             eventData.description || "Event created from email analysis",
           startDate: eventData.startDate,
-          endDate: eventData.endDate,
+          endDate: NewEndDateAssignment,
           startTime: eventData.startTime,
           endTime: eventData.endTime,
           isAllDay: eventData.isAllDay || false,
