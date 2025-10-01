@@ -690,14 +690,16 @@ const EventModal: React.FC<EventModalProps> = ({
                 />
               </div>
               <div className="flex justify-between items-center mt-1">
-                <div className="text-xs text-gray-500">
-                  {eventData.title.length}/200 characters
-                </div>
+                
                 {fieldTouched.title && fieldErrors.title && (
                   <div className="text-xs text-red-500">
                     {fieldErrors.title}
                   </div>
                 )}
+
+                <div className="text-xs text-gray-500">
+                  {eventData.title.length}/200 characters
+                </div>
               </div>
             </div>
 

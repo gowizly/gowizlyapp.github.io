@@ -117,7 +117,9 @@ const SignupPage: React.FC<SignupPageProps> = ({ onSwitchToLogin }) => {
         } else if (result.errors) {
           // Field-specific validation errors from backend
           setErrors(result.errors);
-          showError('Validation Error', 'Please fix the errors below');
+          // showError('Validation Error', 'Please fix the errors below');
+          showError('Validation Error',result.message);
+          // console.log(result.message);
         } else {
           // Other errors
           const errorMessage = result.message || 'Failed to create account. Please try again.';
