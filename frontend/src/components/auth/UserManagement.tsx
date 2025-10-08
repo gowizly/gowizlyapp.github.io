@@ -57,11 +57,11 @@ const UserManagement: React.FC<UserManagementProps> = ({ onBack }) => {
     
     // Username validation
     if (!formData.username.trim()) {
-      errors.username = 'Username is required';
+      errors.username = 'Full Name is required';
     } else if (formData.username.trim().length < 3) {
-      errors.username = 'Username must be between 3 and 50 characters';
+      errors.username = 'Full Name must be between 3 and 50 characters';
     } else if (formData.username.trim().length > 50) {
-      errors.username = 'Username must be between 3 and 50 characters';
+      errors.username = 'Full Name must be between 3 and 50 characters';
     }
     // } else if (!/^[a-zA-Z0-9_\-\.]+$/.test(formData.username.trim())) {
     //   errors.username = 'Username can only contain letters, numbers, underscores, hyphens, and dots';

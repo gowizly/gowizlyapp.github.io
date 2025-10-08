@@ -117,7 +117,9 @@ const SignupPage: React.FC<SignupPageProps> = ({ onSwitchToLogin }) => {
         } else if (result.errors) {
           // Field-specific validation errors from backend
           setErrors(result.errors);
-          showError('Validation Error', 'Please fix the errors below');
+          // showError('Validation Error', 'Please fix the errors below');
+          showError('Validation Error',result.message);
+          // console.log(result.message);
         } else {
           // Other errors
           const errorMessage = result.message || 'Failed to create account. Please try again.';
@@ -205,7 +207,7 @@ const SignupPage: React.FC<SignupPageProps> = ({ onSwitchToLogin }) => {
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
-            <label className="block text-sm text-left font-medium text-gray-700 mb-2">Username</label>
+            <label className="block text-sm text-left font-medium text-gray-700 mb-2">Full Name</label>
             <div className="relative">
               <User className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
               <input
@@ -216,7 +218,7 @@ const SignupPage: React.FC<SignupPageProps> = ({ onSwitchToLogin }) => {
                 className={`w-full pl-10 pr-10 py-3 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent ${
                   errors.username ? 'border-red-500' : fieldTouched.username && !errors.username ? 'border-green-500' : 'border-gray-300'
                 }`}
-                placeholder="Enter your username"
+                placeholder="Enter your Full Name"
                 disabled={isSubmitting}
               />
               <div className="absolute right-3 top-1/2 transform -translate-y-1/2">

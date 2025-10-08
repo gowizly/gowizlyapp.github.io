@@ -721,10 +721,41 @@ export const handleOAuthCallback = async (req, res) => {
 };
 
 // Google OAuth Callback Handler
+// export const handleGoogleCallback = async (req, res) => {
+//   try {
+//     logInfo('Google OAuth callback received', { userId: req.user?.id });
+    
+//     if (!req.user) {
+//       logError('OAuth callback - No user data received');
+//       return res.redirect(`${process.env.CLIENT_URL}/auth/error?error=no_user_data`);
+//     }
+
+//     // Generate JWT token for the OAuth user
+//     const token = jwt.sign(
+//       { id: req.user.id },
+//       process.env.JWT_SECRET,
+//       { expiresIn: "7d" }
+//     );
+    
+//     logInfo('OAuth callback - JWT generated, redirecting', { userId: req.user.id });
+    
+//     // Redirect to frontend auth success page with token
+//     const welcomeTemplate = getWelcomeEmailTemplate(user.username);
+//     await sendEmail(user.email, "Welcome to GoWizly!", welcomeTemplate);
+    
+//     logInfo('Welcome email sent', { userId: user.id, email: user.email });
+//     res.redirect(`${process.env.CLIENT_URL}/auth/success?token=${token}`);
+//   } catch (error) {
+//     logError("OAuth callback error", error, { userId: req.user?.id });
+//     res.redirect(`${process.env.CLIENT_URL}/auth/error?error=oauth_callback_failed`);
+//   }
+// };
+
+// Google OAuth Callback Handler
 export const handleGoogleCallback = async (req, res) => {
   try {
     logInfo('Google OAuth callback received', { userId: req.user?.id });
-    
+
     if (!req.user) {
       logError('OAuth callback - No user data received');
       return res.redirect(`${process.env.CLIENT_URL}/auth/error?error=no_user_data`);
@@ -736,9 +767,27 @@ export const handleGoogleCallback = async (req, res) => {
       process.env.JWT_SECRET,
       { expiresIn: "7d" }
     );
-    
-    logInfo('OAuth callback - JWT generated, redirecting', { userId: req.user.id });
-    
+
+    // Send welcome email only if user is logging in first time
+    if (!req.user.welcomeEmailSent) {
+      // Mark user as verified (OAuth is trusted) and welcome email as sent
+      await prisma.user.update({
+        where: { id: req.user.id },
+        data: {
+          isVerified: true,
+          welcomeEmailSent: true
+        }
+      });
+
+      logInfo('Sending welcome email for first-time OAuth user', { userId: req.user.id, email: req.user.email });
+
+      // Send the welcome email
+      const welcomeTemplate = getWelcomeEmailTemplate(req.user.username);
+      await sendEmail(req.user.email, "Welcome to GoWizly!", welcomeTemplate);
+
+      logInfo('Welcome email sent successfully', { userId: req.user.id, email: req.user.email });
+    }
+
     // Redirect to frontend auth success page with token
     res.redirect(`${process.env.CLIENT_URL}/auth/success?token=${token}`);
   } catch (error) {
@@ -746,6 +795,7 @@ export const handleGoogleCallback = async (req, res) => {
     res.redirect(`${process.env.CLIENT_URL}/auth/error?error=oauth_callback_failed`);
   }
 };
+
 
 // Fixed Resend verification email function
 export const resendVerification = async (req, res) => {

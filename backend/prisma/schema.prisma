@@ -15,21 +15,22 @@ datasource db {
 }
 
 model User {
-  id              Int       @id @default(autoincrement())
-  username        String    @unique
-  email           String    @unique
-  password        String?
-  googleId        String?   @unique
-  address         String?   // User's address
-  isVerified      Boolean   @default(false)
-  resetToken      String?
+  id               Int       @id @default(autoincrement())
+  username         String    @unique
+  email            String    @unique
+  password         String?
+  googleId         String?   @unique
+  address          String?   // User's address
+  isVerified       Boolean   @default(false)
+  welcomeEmailSent Boolean   @default(false)  // <-- New field to track welcome email
+  resetToken       String?
   resetTokenExpire DateTime?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
   
   // Relationships
-  children        Child[]
-  events          Event[]
+  children         Child[]
+  events           Event[]
 }
 
 model Child {

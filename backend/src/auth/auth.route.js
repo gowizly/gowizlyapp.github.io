@@ -73,6 +73,14 @@ if (process.env.NODE_ENV === 'development') {
 
 // Improved Google OAuth Routes
 router.get("/google", passport.authenticate("google", { scope: ["profile", "email"] }));
+// router.get("/google", passport.authenticate("google", { 
+//   scope: [
+//     "profile",
+//     "email",
+//     "https://www.googleapis.com/auth/user.phonenumbers.read",
+//     "https://www.googleapis.com/auth/user.addresses.read"
+//   ] 
+// }));
 
 // Updated Google OAuth callback with consistent JSON responses
 router.get("/google/callback", 

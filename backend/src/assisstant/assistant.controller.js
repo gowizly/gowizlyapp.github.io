@@ -7,26 +7,26 @@ import { createEvent } from "../calendar/calendar.controller.js";
 export const analyzeEmail = async (req, res) => {
   try {
     const { emailContent, childId } = req.body;
-    
-    logInfo('Email analysis request', { 
-      userId: req.user.id, 
+
+    logInfo("Email analysis request", {
+      userId: req.user.id,
       emailContentLength: emailContent?.length || 0,
-      childId 
+      childId,
     });
 
-    if (!emailContent || typeof emailContent !== 'string') {
-      logWarn('Invalid email content provided', { userId: req.user.id });
+    if (!emailContent || typeof emailContent !== "string") {
+      logWarn("Invalid email content provided", { userId: req.user.id });
       return res.status(400).json({
         success: false,
-        msg: "Email content is required and must be a string"
+        msg: "Email content is required and must be a string",
       });
     }
 
     if (emailContent.trim().length === 0) {
-      logWarn('Empty email content provided', { userId: req.user.id });
+      logWarn("Empty email content provided", { userId: req.user.id });
       return res.status(400).json({
         success: false,
-        msg: "Email content cannot be empty"
+        msg: "Email content cannot be empty",
       });
     }
 
@@ -35,40 +35,45 @@ export const analyzeEmail = async (req, res) => {
       const child = await prisma.child.findFirst({
         where: {
           id: parseInt(childId),
-          parentId: req.user.id
-        }
+          parentId: req.user.id,
+        },
       });
 
       if (!child) {
-        logWarn('Child not found for email analysis', { userId: req.user.id, childId });
+        logWarn("Child not found for email analysis", {
+          userId: req.user.id,
+          childId,
+        });
         return res.status(404).json({
           success: false,
-          msg: "Child not found"
+          msg: "Child not found",
         });
       }
     }
 
     // Analyze email content for events
-    const analysisResult = await assistantService.analyzeEmailContent(emailContent);
+    const analysisResult = await assistantService.analyzeEmailContent(
+      emailContent
+    );
 
-    console.log("Email Parsed Data Nischay",analysisResult);
-    
-    logDebug('Email analysis completed', { 
-      userId: req.user.id, 
+    console.log("Email Parsed Data Nischay", analysisResult);
+
+    logDebug("Email analysis completed", {
+      userId: req.user.id,
       eventsDetected: analysisResult.events.length,
-      hasEvents: analysisResult.hasEvents 
+      hasEvents: analysisResult.hasEvents,
     });
 
     if (!analysisResult.hasEvents) {
-      logInfo('No events detected in email', { userId: req.user.id });
+      logInfo("No events detected in email", { userId: req.user.id });
       return res.json({
         success: true,
         msg: "Email analyzed successfully - no events detected",
         data: {
           hasEvents: false,
           events: [],
-          analysis: analysisResult.analysis
-        }
+          analysis: analysisResult.analysis,
+        },
       });
     }
 
@@ -78,27 +83,43 @@ export const analyzeEmail = async (req, res) => {
 
     for (const eventData of analysisResult.events) {
       try {
+        let NewEndDateAssignment;
+
+        if (eventData.type === "ASSIGNMENT_DUE") {
+          let startDate = new Date(eventData.startDate);
+          startDate.setDate(startDate.getDate() + 1);
+          NewEndDateAssignment = startDate.toISOString();
+          console.log("Assignment_Due_Date", NewEndDateAssignment);
+        } else {
+          NewEndDateAssignment = new Date(eventData.endDate).toISOString();
+          console.log("General_End_Date", NewEndDateAssignment);
+        }
+
         // Prepare event data for creation
+        console.log("end_date", eventData.endDate);
         const eventPayload = {
           title: eventData.title,
-          description: eventData.description || 'Event created from email analysis',
+          description:
+            eventData.description || "Event created from email analysis",
           startDate: eventData.startDate,
-          endDate: eventData.endDate,
+          endDate: NewEndDateAssignment,
           startTime: eventData.startTime,
           endTime: eventData.endTime,
           isAllDay: eventData.isAllDay || false,
-          type: eventData.type || 'OTHER',
-          priority: eventData.priority || 'MEDIUM',
-          color: eventData.color || assistantService.getEventTypeColor(eventData.type || 'OTHER'),
+          type: eventData.type || "OTHER",
+          priority: eventData.priority || "MEDIUM",
+          color:
+            eventData.color ||
+            assistantService.getEventTypeColor(eventData.type || "OTHER"),
           childId: childId,
           hasReminder: eventData.hasReminder || false,
-          reminderMinutes: eventData.reminderMinutes
+          reminderMinutes: eventData.reminderMinutes,
         };
 
         // Create a mock request object for createEvent
         const mockReq = {
           user: req.user,
-          body: eventPayload
+          body: eventPayload,
         };
 
         // Create a mock response object to capture the result
@@ -112,7 +133,7 @@ export const analyzeEmail = async (req, res) => {
               createdEventData = data.data;
             }
             return mockRes;
-          }
+          },
         };
 
         // Call createEvent function
@@ -120,71 +141,227 @@ export const analyzeEmail = async (req, res) => {
 
         if (eventCreated) {
           createdEvents.push(createdEventData);
-          logDebug('Event created from email', { 
-            userId: req.user.id, 
+          logDebug("Event created from email", {
+            userId: req.user.id,
             eventId: createdEventData?.id,
-            eventTitle: eventPayload.title 
+            eventTitle: eventPayload.title,
           });
         } else {
           errors.push(`Failed to create event: ${eventPayload.title}`);
         }
-
       } catch (error) {
-        logWarn('Error creating event from email', { 
-          userId: req.user.id, 
+        logWarn("Error creating event from email", {
+          userId: req.user.id,
           eventTitle: eventData.title,
-          error: error.message 
+          error: error.message,
         });
-        errors.push(`Failed to create event: ${eventData.title} - ${error.message}`);
+        errors.push(
+          `Failed to create event: ${eventData.title} - ${error.message}`
+        );
       }
     }
 
-    logInfo('Email analysis and event creation completed', { 
-      userId: req.user.id, 
+    logInfo("Email analysis and event creation completed", {
+      userId: req.user.id,
       eventsDetected: analysisResult.events.length,
       eventsCreated: createdEvents.length,
       errors: errors.length,
-      childId 
+      childId,
     });
 
     res.json({
       success: true,
-      msg: `Email analyzed successfully - ${createdEvents.length} event${createdEvents.length !== 1 ? 's' : ''} created${errors.length > 0 ? ` (${errors.length} failed)` : ''}`,
+      msg: `Email analyzed successfully - ${createdEvents.length} event${
+        createdEvents.length !== 1 ? "s" : ""
+      } created${errors.length > 0 ? ` (${errors.length} failed)` : ""}`,
       data: {
         hasEvents: true,
         eventsCreated: createdEvents.length,
         events: createdEvents,
         analysis: analysisResult.analysis,
-        errors: errors
-      }
+        errors: errors,
+      },
     });
-
   } catch (error) {
     logError("Email analysis error", error, { userId: req.user?.id });
     res.status(500).json({
       success: false,
-      msg: "Internal server error during email analysis"
+      msg: "Internal server error during email analysis",
     });
   }
 };
 
-
 // Analyze photo for events
+// export const analyzePhoto = async (req, res) => {
+//   try {
+//     const { childId } = req.body;
+
+//     logInfo('Photo analysis request', {
+//       userId: req.user.id,
+//       hasFile: !!req.file,
+//       childId
+//     });
+
+//     if (!req.file) {
+//       logWarn('No photo file provided for analysis', { userId: req.user.id });
+//       return res.status(400).json({
+//         success: false,
+//         msg: "Photo file is required"
+//       });
+//     }
+
+//     // Verify child exists if childId is provided
+//     if (childId) {
+//       const child = await prisma.child.findFirst({
+//         where: {
+//           id: parseInt(childId),
+//           parentId: req.user.id
+//         }
+//       });
+
+//       if (!child) {
+//         logWarn('Child not found for photo analysis', { userId: req.user.id, childId });
+//         return res.status(404).json({
+//           success: false,
+//           msg: "Child not found"
+//         });
+//       }
+//     }
+
+//     // Analyze photo for events using buffer (no file saving)
+//     const analysisResult = await assistantService.analyzePhotoForEvents(req.file.buffer, req.file.mimetype);
+
+//     logDebug('Photo analysis completed', {
+//       userId: req.user.id,
+//       eventsDetected: analysisResult.events.length,
+//       hasEvents: analysisResult.hasEvents,
+//       bufferSize: req.file.buffer.length
+//     });
+
+//     if (!analysisResult.hasEvents) {
+//       logInfo('No events detected in photo', { userId: req.user.id });
+//       return res.json({
+//         success: true,
+//         msg: "Photo analyzed successfully - no events detected",
+//         data: {
+//           hasEvents: false,
+//           events: [],
+//           analysis: analysisResult.analysis
+//         }
+//       });
+//     }
+
+//     // Create events directly from analysis
+//     const createdEvents = [];
+//     const errors = [];
+
+//     for (const eventData of analysisResult.events) {
+//       try {
+//         // Prepare event data for creation
+//         const eventPayload = {
+//           title: eventData.title,
+//           description: eventData.description || 'Event created from photo analysis',
+//           startDate: eventData.startDate,
+//           endDate: eventData.endDate,
+//           startTime: eventData.startTime,
+//           endTime: eventData.endTime,
+//           isAllDay: eventData.isAllDay || false,
+//           type: eventData.type || 'OTHER',
+//           priority: eventData.priority || 'MEDIUM',
+//           color: eventData.color || assistantService.getEventTypeColor(eventData.type || 'OTHER'),
+//           childId: childId,
+//           hasReminder: eventData.hasReminder || false,
+//           reminderMinutes: eventData.reminderMinutes
+//         };
+
+//         // Create a mock request object for createEvent
+//         const mockReq = {
+//           user: req.user,
+//           body: eventPayload
+//         };
+
+//         // Create a mock response object to capture the result
+//         let eventCreated = false;
+//         let createdEventData = null;
+//         const mockRes = {
+//           status: (code) => mockRes,
+//           json: (data) => {
+//             if (data.success) {
+//               eventCreated = true;
+//               createdEventData = data.data;
+//             }
+//             return mockRes;
+//           }
+//         };
+
+//         // Call createEvent function
+//         await createEvent(mockReq, mockRes);
+
+//         if (eventCreated) {
+//           createdEvents.push(createdEventData);
+//           logDebug('Event created from photo', {
+//             userId: req.user.id,
+//             eventId: createdEventData?.id,
+//             eventTitle: eventPayload.title
+//           });
+//         } else {
+//           errors.push(`Failed to create event: ${eventPayload.title}`);
+//         }
+
+//       } catch (error) {
+//         logWarn('Error creating event from photo', {
+//           userId: req.user.id,
+//           eventTitle: eventData.title,
+//           error: error.message
+//         });
+//         errors.push(`Failed to create event: ${eventData.title} - ${error.message}`);
+//       }
+//     }
+
+//     logInfo('Photo analysis and event creation completed', {
+//       userId: req.user.id,
+//       eventsDetected: analysisResult.events.length,
+//       eventsCreated: createdEvents.length,
+//       errors: errors.length,
+//       childId
+//     });
+
+//     res.json({
+//       success: true,
+//       msg: `Photo analyzed successfully - ${createdEvents.length} event${createdEvents.length !== 1 ? 's' : ''} created${errors.length > 0 ? ` (${errors.length} failed)` : ''}`,
+//       data: {
+//         hasEvents: true,
+//         eventsCreated: createdEvents.length,
+//         events: createdEvents,
+//         analysis: analysisResult.analysis,
+//         errors: errors
+//       }
+//     });
+
+//   } catch (error) {
+//     logError("Photo analysis error", error, { userId: req.user?.id });
+//     res.status(500).json({
+//       success: false,
+//       msg: "Internal server error during photo analysis"
+//     });
+//   }
+// };
+
 export const analyzePhoto = async (req, res) => {
   try {
     const { childId } = req.body;
-    
-    logInfo('Photo analysis request', { 
-      userId: req.user.id, 
+
+    logInfo("Photo analysis request", {
+      userId: req.user.id,
       hasFile: !!req.file,
-      childId 
+      childId,
     });
 
     if (!req.file) {
-      logWarn('No photo file provided for analysis', { userId: req.user.id });
+      logWarn("No photo file provided for analysis", { userId: req.user.id });
       return res.status(400).json({
         success: false,
-        msg: "Photo file is required"
+        msg: "Photo file is required",
       });
     }
 
@@ -193,72 +370,91 @@ export const analyzePhoto = async (req, res) => {
       const child = await prisma.child.findFirst({
         where: {
           id: parseInt(childId),
-          parentId: req.user.id
-        }
+          parentId: req.user.id,
+        },
       });
 
       if (!child) {
-        logWarn('Child not found for photo analysis', { userId: req.user.id, childId });
+        logWarn("Child not found for photo analysis", {
+          userId: req.user.id,
+          childId,
+        });
         return res.status(404).json({
           success: false,
-          msg: "Child not found"
+          msg: "Child not found",
         });
       }
     }
 
     // Analyze photo for events using buffer (no file saving)
-    const analysisResult = await assistantService.analyzePhotoForEvents(req.file.buffer, req.file.mimetype);
-    
-    logDebug('Photo analysis completed', { 
-      userId: req.user.id, 
+    const analysisResult = await assistantService.analyzePhotoForEvents(
+      req.file.buffer,
+      req.file.mimetype
+    );
+
+    logDebug("Photo analysis completed", {
+      userId: req.user.id,
       eventsDetected: analysisResult.events.length,
       hasEvents: analysisResult.hasEvents,
-      bufferSize: req.file.buffer.length 
+      bufferSize: req.file.buffer.length,
     });
 
     if (!analysisResult.hasEvents) {
-      logInfo('No events detected in photo', { userId: req.user.id });
+      logInfo("No events detected in photo", { userId: req.user.id });
       return res.json({
         success: true,
         msg: "Photo analyzed successfully - no events detected",
         data: {
           hasEvents: false,
           events: [],
-          analysis: analysisResult.analysis
-        }
+          analysis: analysisResult.analysis,
+        },
       });
     }
 
-    // Create events directly from analysis
     const createdEvents = [];
     const errors = [];
 
     for (const eventData of analysisResult.events) {
       try {
-        // Prepare event data for creation
+        if (!childId) {
+          logWarn("Skipping AI event because no childId is provided", {
+            eventTitle: eventData.title,
+          });
+          errors.push(`Skipped event (no childId): ${eventData.title}`);
+          continue;
+        }
+
+        // Auto-fill endDate if missing (next day)
+        const start = new Date(eventData.startDate);
+        let endDate = eventData.endDate;
+        if (!endDate) {
+          const end = new Date(start);
+          end.setUTCDate(start.getUTCDate() + 1);
+          endDate = end.toISOString().split("T")[0]; // YYYY-MM-DD
+        }
+
         const eventPayload = {
           title: eventData.title,
-          description: eventData.description || 'Event created from photo analysis',
+          description:
+            eventData.description || "Event created from photo analysis",
           startDate: eventData.startDate,
-          endDate: eventData.endDate,
+          endDate: endDate,
           startTime: eventData.startTime,
           endTime: eventData.endTime,
           isAllDay: eventData.isAllDay || false,
-          type: eventData.type || 'OTHER',
-          priority: eventData.priority || 'MEDIUM',
-          color: eventData.color || assistantService.getEventTypeColor(eventData.type || 'OTHER'),
+          type: eventData.type || "OTHER",
+          priority: eventData.priority || "MEDIUM",
+          color:
+            eventData.color ||
+            assistantService.getEventTypeColor(eventData.type || "OTHER"),
           childId: childId,
           hasReminder: eventData.hasReminder || false,
-          reminderMinutes: eventData.reminderMinutes
+          reminderMinutes: eventData.reminderMinutes,
         };
 
-        // Create a mock request object for createEvent
-        const mockReq = {
-          user: req.user,
-          body: eventPayload
-        };
-
-        // Create a mock response object to capture the result
+        // Mock request & response for createEvent
+        const mockReq = { user: req.user, body: eventPayload };
         let eventCreated = false;
         let createdEventData = null;
         const mockRes = {
@@ -269,58 +465,59 @@ export const analyzePhoto = async (req, res) => {
               createdEventData = data.data;
             }
             return mockRes;
-          }
+          },
         };
 
-        // Call createEvent function
         await createEvent(mockReq, mockRes);
 
         if (eventCreated) {
           createdEvents.push(createdEventData);
-          logDebug('Event created from photo', { 
-            userId: req.user.id, 
+          logDebug("Event created from photo", {
+            userId: req.user.id,
             eventId: createdEventData?.id,
-            eventTitle: eventPayload.title 
+            eventTitle: eventPayload.title,
           });
         } else {
           errors.push(`Failed to create event: ${eventPayload.title}`);
         }
-
       } catch (error) {
-        logWarn('Error creating event from photo', { 
-          userId: req.user.id, 
+        logWarn("Error creating event from photo", {
+          userId: req.user.id,
           eventTitle: eventData.title,
-          error: error.message 
+          error: error.message,
         });
-        errors.push(`Failed to create event: ${eventData.title} - ${error.message}`);
+        errors.push(
+          `Failed to create event: ${eventData.title} - ${error.message}`
+        );
       }
     }
 
-    logInfo('Photo analysis and event creation completed', { 
-      userId: req.user.id, 
+    logInfo("Photo analysis and event creation completed", {
+      userId: req.user.id,
       eventsDetected: analysisResult.events.length,
       eventsCreated: createdEvents.length,
       errors: errors.length,
-      childId 
+      childId,
     });
 
     res.json({
       success: true,
-      msg: `Photo analyzed successfully - ${createdEvents.length} event${createdEvents.length !== 1 ? 's' : ''} created${errors.length > 0 ? ` (${errors.length} failed)` : ''}`,
+      msg: `Photo analyzed successfully - ${createdEvents.length} event${
+        createdEvents.length !== 1 ? "s" : ""
+      } created${errors.length > 0 ? ` (${errors.length} failed)` : ""}`,
       data: {
         hasEvents: true,
         eventsCreated: createdEvents.length,
         events: createdEvents,
         analysis: analysisResult.analysis,
-        errors: errors
-      }
+        errors: errors,
+      },
     });
-
   } catch (error) {
     logError("Photo analysis error", error, { userId: req.user?.id });
     res.status(500).json({
       success: false,
-      msg: "Internal server error during photo analysis"
+      msg: "Internal server error during photo analysis",
     });
   }
 };
