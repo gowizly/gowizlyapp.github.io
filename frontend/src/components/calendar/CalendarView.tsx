@@ -163,7 +163,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({
                           : 'No description'}
                       </div>
                       <div className="text-gray-500 text-xs">
-                        🕒 {new Date(event.startDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' })} UTC
+                        🕒 {new Date(event.startDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', })} UTC
                       </div>
                     </div>
                   )}

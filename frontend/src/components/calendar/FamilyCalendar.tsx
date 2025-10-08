@@ -23,7 +23,7 @@ interface LocalChild {
 
 const FamilyCalendarApp = () => {
   const { isAuthenticated } = useAuth();
-  const { showError } = useToast();
+  const { showError, showSuccess } = useToast();
   const [currentView, setCurrentView] = useState('calendar');
 
   const [selectedDate, setSelectedDate] = useState(() => {
@@ -34,7 +34,6 @@ const FamilyCalendarApp = () => {
   const [selectedChild, setSelectedChild] = useState<LocalChild | null>(null);
   const [events, setEvents] = useState<Event[]>([]);
   const [children, setChildren] = useState<LocalChild[]>([]);
-  const [showAddChild, setShowAddChild] = useState(false);
   const [showAddEvent, setShowAddEvent] = useState(false);
   const [showEditEvent, setShowEditEvent] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
@@ -42,26 +41,8 @@ const FamilyCalendarApp = () => {
   const [eventsByDate, setEventsByDate] = useState<{ [date: string]: Event[] }>({});
   const isLoadingRef = useRef(false);
 
-  // --- Week/Month helpers ---
-  const startOfWeek = (date: Date) => {
-    const d = new Date(date);
-    d.setUTCDate(d.getUTCDate() - d.getUTCDay());
-    d.setUTCHours(0, 0, 0, 0);
-    return d;
-  };
-
-  const endOfWeek = (date: Date) => {
-    const d = new Date(date);
-    d.setUTCDate(d.getUTCDate() + (6 - d.getUTCDay()));
-    d.setUTCHours(23, 59, 59, 999);
-    return d;
-  };
-
-  const monthStart = (date: Date) => new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1));
-  const monthEnd = (date: Date) => new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 0, 23, 59, 59));
-
-  // --- Load children ---
-  const loadChildren = async () => {
+  // --- Load children from API ---
+  const loadChildren = useCallback(async () => {
     try {
       const response = await childApiService.getChildren();
       if (response.success && response.data) {
@@ -81,9 +62,9 @@ const FamilyCalendarApp = () => {
       showError('Failed to Load Children', error instanceof Error ? error.message : 'Network error occurred');
       setChildren([]);
     }
-  };
+  }, [showError]);
 
-  // --- Load events ---
+  // --- Load events for selected date ---
   const loadEventsForDateRange = useCallback(async () => {
     if (isLoadingRef.current) return;
     isLoadingRef.current = true;
@@ -122,7 +103,7 @@ const FamilyCalendarApp = () => {
   }, [selectedChild, selectedDate, showError]);
 
   // --- Effects ---
-  useEffect(() => { if (isAuthenticated) loadChildren(); }, [isAuthenticated]);
+  useEffect(() => { if (isAuthenticated) loadChildren(); }, [isAuthenticated, loadChildren]);
   useEffect(() => { if (isAuthenticated) loadEventsForDateRange(); }, [isAuthenticated, selectedChild, selectedDate, loadEventsForDateRange]);
 
   // --- Event handlers ---
@@ -130,6 +111,12 @@ const FamilyCalendarApp = () => {
   const handleEventCreated = useCallback(async () => { await loadEventsForDateRange(); }, [loadEventsForDateRange]);
   const handleEventUpdated = useCallback(async () => { await loadEventsForDateRange(); }, [loadEventsForDateRange]);
   const handleEventDeleted = useCallback(async () => { await loadEventsForDateRange(); }, [loadEventsForDateRange]);
+
+  // --- Child added callback (stay on ChildManagement screen) ---
+  const handleChildCreated = useCallback(async () => {
+    await loadChildren(); // refresh children list
+    showSuccess('Child added!'); // optional toast
+  }, [loadChildren, showSuccess]);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -146,12 +133,21 @@ const FamilyCalendarApp = () => {
           events={events}
           eventsByDate={eventsByDate}
           isLoadingEvents={isLoadingEvents}
-          onAddEvent={() => { if (!children.length) showError('Add Child first'); else setShowAddEvent(true); }}
+          onAddEvent={() => {
+            if (!children.length) showError('Add Child first');
+            else setShowAddEvent(true);
+          }}
           onEventClick={handleEventClick}
         />
       )}
 
-      {currentView === 'children' && <ChildManagement onBack={() => setCurrentView('calendar')} />}
+      {currentView === 'children' && (
+        <ChildManagement
+          onBack={() => setCurrentView('calendar')}
+          onChildCreated={handleChildCreated} // ✅ refresh children without changing view
+        />
+      )}
+
       {currentView === 'ai-assistant' && <AIAssistant children={children} onEventsCreated={handleEventCreated} onBack={() => setCurrentView('calendar')} />}
 
       {showAddEvent && <EventModal isOpen={showAddEvent} onClose={() => setShowAddEvent(false)} children={children} mode="create" onEventCreated={handleEventCreated} />}
