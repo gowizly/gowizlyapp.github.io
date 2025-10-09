@@ -197,8 +197,8 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ children, onEventsCreated, on
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <div className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div>
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-center h-16">
               <div className="flex items-center  justify-center space-x-4">
                 <Bot className="w-8 h-8 text-purple-600 " />
@@ -209,7 +209,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ children, onEventsCreated, on
       </div>
 
       {/* Main Content */}
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="bg-white rounded-lg shadow-lg">
           {/* Mode Selection */}
           <div className="border-b border-gray-200 px-6 py-4">
@@ -250,18 +250,25 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ children, onEventsCreated, on
                     <label className="block text-sm text-left font-semibold text-gray-700 mb-2">
                       Assign events to child:
                     </label>
-                    <select
-                      value={selectedChildId || ''}
-                      onChange={(e) => setSelectedChildId(e.target.value ? Number(e.target.value) : null)}
-                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                    >
-                      <option value="">All children</option>
-                      {children.map((child) => (
-                        <option key={child.id} value={child.id || ''}>
-                          {child.name} ({child.gradeLevel})
-                        </option>
-                      ))}
-                    </select>
+                    <div className="relative">
+                      <select
+                        value={selectedChildId || ''}
+                        onChange={(e) => setSelectedChildId(e.target.value ? Number(e.target.value) : null)}
+                        className="w-full p-3 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 appearance-none bg-white"
+                      >
+                        <option value="">All children</option>
+                        {children.map((child) => (
+                          <option key={child.id} value={child.id || ''}>
+                            {child.name} ({child.gradeLevel})
+                          </option>
+                        ))}
+                      </select>
+                      <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                        <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </div>
+                    </div>
                   </div>
                 )}
 
@@ -308,18 +315,25 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ children, onEventsCreated, on
                     <label className="block text-sm text-left font-semibold text-gray-700 mb-2">
                       Assign events to child:
                     </label>
-                    <select
-                      value={selectedChildId || ''}
-                      onChange={(e) => setSelectedChildId(e.target.value ? Number(e.target.value) : null)}
-                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                    >
-                      <option value="">All children</option>
-                      {children.map((child) => (
-                        <option key={child.id} value={child.id || ''}>
-                          {child.name} ({child.gradeLevel})
-                        </option>
-                      ))}
-                    </select>
+                    <div className="relative">
+                      <select
+                        value={selectedChildId || ''}
+                        onChange={(e) => setSelectedChildId(e.target.value ? Number(e.target.value) : null)}
+                        className="w-full p-3 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 appearance-none bg-white"
+                      >
+                        <option value="">All children</option>
+                        {children.map((child) => (
+                          <option key={child.id} value={child.id || ''}>
+                            {child.name} ({child.gradeLevel})
+                          </option>
+                        ))}
+                      </select>
+                      <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                        <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </div>
+                    </div>
                   </div>
                 )}
 

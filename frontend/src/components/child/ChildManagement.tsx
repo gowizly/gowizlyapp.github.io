@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Users, Plus, Edit, Trash2, Save, X, User, AlertCircle, CheckCircle, Loader, ArrowLeft, Check } from 'lucide-react';
+import { Users, Plus, Edit, Trash2, Save, X, User, AlertCircle, CheckCircle, Loader, ArrowLeft, Check, Calendar } from 'lucide-react';
 import { Child, childApiService } from '../../services/childApi';
 import { validateChildForCreation, validateChildForUpdate, ValidationError, VALID_GRADE_LEVELS, validateName, validateGradeLevel, validateSchoolName, validateBirthDate } from '../../utils/childValidation';
 import { Event, eventApiService } from '../../services/eventApi';
@@ -390,9 +390,9 @@ const ChildManagement: React.FC<ChildManagementProps> = ({ onBack, onChildCreate
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen bg-gray-50">
       {/* Header */} 
-      <div className="max-w-6xl mx-auto">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center space-x-4">
             <h3 className='text-2xl font-bold'>My Children</h3>
@@ -437,58 +437,73 @@ const ChildManagement: React.FC<ChildManagementProps> = ({ onBack, onChildCreate
         ) : (
           <div className="flex flex-col gap-6">
             {children.map((child) => (
-              <div key={child.id} className="bg-white rounded-lg shadow-md p-6 border border-gray-200">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
-                      <User className="w-6 h-6 text-purple-600" />
+              <div key={child.id} className="bg-white rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 border border-gray-100 overflow-hidden">
+                {/* Header Section */}
+                <div className="bg-gradient-to-r from-purple-50 to-blue-50 px-6 py-4 border-b border-gray-100">
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center space-x-4">
+                      <div className="w-14 h-14 bg-gradient-to-br from-purple-500 to-purple-600 rounded-full flex items-center justify-center shadow-lg">
+                        <User className="w-7 h-7 text-white" />
+                      </div>
+                      <div>
+                        <h3 className="text-xl font-bold text-gray-900">{child.name}</h3>
+                        <div className="flex items-center space-x-4 mt-1">
+                          <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-purple-100 text-purple-800">
+                            {child.gradeLevel}
+                          </span>
+                          <span className="text-sm text-gray-600 font-medium">{child.schoolName}</span>
+                        </div>
+                      </div>
                     </div>
-                    <div>
-                      <h3 className="text-lg text-left font-semibold text-gray-800">{child.name}</h3>
-                      <p className="text-sm text-left text-gray-600">{child.gradeLevel}</p>
-                      <p className="text-sm text-left text-gray-600">{child.schoolName}</p>
+                    <div className="flex space-x-1">
+                      <button
+                        onClick={() => openEditModal(child)}
+                        className="p-3 text-blue-600 hover:bg-blue-50 rounded-xl transition-all duration-200 hover:scale-105"
+                        title="Edit child"
+                      >
+                        <Edit className="w-5 h-5" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteChild(child.id!)}
+                        className="p-3 text-red-600 hover:bg-red-50 rounded-xl transition-all duration-200 hover:scale-105"
+                        title="Delete child"
+                      >
+                        <Trash2 className="w-5 h-5" />
+                      </button>
                     </div>
-                  </div>
-                  <div className="flex space-x-2">
-                    <button
-                      onClick={() => openEditModal(child)}
-                      className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
-                      title="Edit child"
-                    >
-                      <Edit className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => handleDeleteChild(child.id!)}
-                      className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors"
-                      title="Delete child"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <hr />
-                  <div className='text-sm text-gray-600'>
-                    <p className='font-semibold text-left'>Upcoming Events ({upcomingEvents.filter((event) => event.children?.some((c) => c.id === child.id)).length})</p>
-                    
+                {/* Events Section */}
+                <div className="px-6 py-5">
+                  <div className="flex items-center justify-between mb-4">
+                    <h4 className="text-lg font-semibold text-gray-800">Upcoming Events</h4>
+                    <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-gray-100 text-gray-700">
+                      {upcomingEvents.filter((event) => event.children?.some((c) => c.id === child.id)).length} events
+                    </span>
+                  </div>
+                  
+                  <div className="space-y-3">
                     {upcomingEvents
                       .filter((event) => event.children?.some((c) => c.id === child.id))
-                      .slice(0, 10)
+                      .slice(0, 5)
                       .map((event) => (
-                        <div key={event.id}>
-                          <div className="flex">
-                            <p
-                              className={`w-6 h-6 mt-1 mr-1 rounded-full ${eventTypes[event.type as keyof typeof eventTypes]?.color || "bg-gray-400"
-                                }`}
-                            ></p>
-                            <p className="text-left text-xl font-bold">{event.title}</p>
-                          </div>
+                        <div key={event.id} className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                          <div
+                            className={`w-3 h-3 rounded-full flex-shrink-0 ${eventTypes[event.type as keyof typeof eventTypes]?.color || "bg-gray-400"}`}
+                          ></div>
+                          <span className="text-gray-800 font-medium text-sm">{event.title}</span>
                         </div>
                       ))}
 
                     {upcomingEvents.filter((event) => event.children?.some((c) => c.id === child.id)).length === 0 && (
-                      <p className="text-gray-500">No upcoming events</p>
+                      <div className="text-center py-6">
+                        <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                          <Calendar className="w-6 h-6 text-gray-400" />
+                        </div>
+                        <p className="text-gray-500 font-medium">No upcoming events</p>
+                        <p className="text-gray-400 text-sm mt-1">Add events to see them here</p>
+                      </div>
                     )}
                   </div>
                 </div>

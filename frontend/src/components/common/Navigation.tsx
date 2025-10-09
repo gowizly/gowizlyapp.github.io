@@ -41,7 +41,11 @@ const Navigation: React.FC<NavigationProps> = ({
         
         <button
           onClick={onAIAssistantOpen}
-          className="px-4 py-2 rounded-lg transition-colors text-gray-600 hover:text-purple-600"
+          className={`px-4 py-2 rounded-lg transition-colors ${
+            currentView === 'ai-assistant' 
+              ? 'bg-purple-100 text-purple-700' 
+              : 'text-gray-600 hover:text-purple-600'
+          }`}
         >
           <Bot className="w-5 h-5 inline mr-2" />
           AI Assistant

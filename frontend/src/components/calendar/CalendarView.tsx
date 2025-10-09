@@ -117,7 +117,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({
     [{ date: selectedDate, isCurrentMonth: true }];
 
   const renderGrid = () => (
-    <div className={`grid ${viewMode === 'month' ? 'grid-cols-7' : viewMode === 'week' ? 'grid-cols-7' : 'grid-cols-1'} gap-4`}>
+    <div className={`grid ${viewMode === 'month' ? 'grid-cols-7' : viewMode === 'week' ? 'grid-cols-7' : 'grid-cols-1'} gap-4 overflow-visible`}>
       {(viewMode === 'month' || viewMode === 'week') && ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d => (
         <div key={d} className="text-center font-semibold text-gray-600 py-2">{d}</div>
       ))}
@@ -139,7 +139,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({
             <div className={`text-sm font-medium ${dayObj.isCurrentMonth ? 'text-gray-900' : 'text-gray-400'}`}>
               {dayObj.date.getUTCDate()}
             </div>
-            <div className="space-y-1 mt-2">
+            <div className="space-y-1 mt-2 overflow-visible">
               {dayEvents.slice(0, 3).map(event => (
                 <div
                   key={event.id}
@@ -148,14 +148,16 @@ const CalendarView: React.FC<CalendarViewProps> = ({
                   onMouseLeave={() => setHoveredEventId(null)}
                   onClick={(e) => { e.stopPropagation(); onEventClick?.(event); }}
                 >
-                  {event.children && event.children.length > 0
-                    ? `${event.children.map(child => child.name).join(', ')} - `
-                    : ''}
-                  {event.title}
+                  <div className="truncate">
+                    {event.children && event.children.length > 0
+                      ? `${event.children.map(child => child.name).join(', ')} - `
+                      : ''}
+                    {event.title}
+                  </div>
                   {hoveredEventId === event.id && (
                     <div className="absolute z-50 left-1/2 transform -translate-x-1/2 mt-2 w-56 bg-white border border-gray-200 rounded-lg shadow-lg p-3 text-gray-800 text-sm">
-                      <div className="font-semibold mb-1">{event.title}</div>
-                      <div className="mb-1">
+                      <div className="font-semibold mb-1 break-words">{event.title}</div>
+                      <div className="mb-1 break-words">
                         {event.description 
                           ? (event.description.length > 100 
                               ? event.description.substring(0, 100) + '...' 
@@ -186,29 +188,36 @@ const CalendarView: React.FC<CalendarViewProps> = ({
   );
 
   return (
-    <div className="p-6">
+    <div className="p-6 overflow-visible">
       {/* Header */}
       <div className="flex justify-between items-center mb-6">
         <div className="flex items-center space-x-4">
-          <select
-            value={selectedChild?.id?.toString() || ''}
-            onChange={(e) => {
-              const value = e.target.value;
-              if (value === '') onChildChange(null);
-              else {
-                const childId = parseInt(value);
-                const child = children.find(c => c.id === childId);
-                onChildChange(child || null);
-              }
-            }}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-            title="Select child to filter events"
-          >
-            <option value="">All Children</option>
-            {children.map(child => (
-              <option key={child.id} value={child.id?.toString() || ''}>{child.name}</option>
-            ))}
-          </select>
+          <div className="relative">
+            <select
+              value={selectedChild?.id?.toString() || ''}
+              onChange={(e) => {
+                const value = e.target.value;
+                if (value === '') onChildChange(null);
+                else {
+                  const childId = parseInt(value);
+                  const child = children.find(c => c.id === childId);
+                  onChildChange(child || null);
+                }
+              }}
+              className="px-4 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent min-w-48 w-auto appearance-none bg-white"
+              title="Select child to filter events"
+            >
+              <option value="">All Children</option>
+              {children.map(child => (
+                <option key={child.id} value={child.id?.toString() || ''}>{child.name}</option>
+              ))}
+            </select>
+            <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+              <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </div>
+          </div>
         </div>
 
         <div className="flex items-center space-x-4">
@@ -221,16 +230,23 @@ const CalendarView: React.FC<CalendarViewProps> = ({
           <button onClick={() => navigate(1)} className="p-2 hover:bg-gray-100 rounded-lg">
             <ChevronRight className="w-5 h-5" />
           </button>
-          <select
-            value={viewMode}
-            onChange={(e) => setViewMode(e.target.value as any)}
-            className="px-3 py-2 border rounded"
-            title="Select view mode"
-          >
-            <option value="month">Month</option>
-            <option value="week">Week</option>
-            <option value="day">Day</option>
-          </select>
+          <div className="relative">
+            <select
+              value={viewMode}
+              onChange={(e) => setViewMode(e.target.value as any)}
+              className="px-3 py-2 pr-8 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent appearance-none bg-white"
+              title="Select view mode"
+            >
+              <option value="month">Month</option>
+              <option value="week">Week</option>
+              <option value="day">Day</option>
+            </select>
+            <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+              <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </div>
+          </div>
           <button
             onClick={onAddEvent}
             className="bg-purple-600 text-white px-4 py-2 rounded-lg flex items-center space-x-2"
@@ -270,8 +286,8 @@ const CalendarView: React.FC<CalendarViewProps> = ({
                   {event.children && event.children.length > 0
                     ? `${event.children.map(child => child.name).join(', ')} - `
                     : ''}
-                  {event.title.length > 20 ? event.title.substring(0, 20) + '...' : event.title}
-                  <div className="text-gray-100 text-[10px] mt-1">
+                  <div className="break-words">{event.title.length > 20 ? event.title.substring(0, 20) + '...' : event.title}</div>
+                  <div className="text-gray-100 text-[10px] mt-1 break-words">
                     {event.description 
                       ? (event.description.length > 50 
                           ? event.description.substring(0, 50) + '...' 

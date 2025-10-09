@@ -15,9 +15,9 @@ const EventTypeLegend: React.FC = () => {
   };
 
   return (
-    <div className="mt-6">
-      <h3 className="text-lg font-semibold mb-4">Event Types</h3>
-      <div className="flex flex-wrap gap-4">
+    <div className="mt-6 pt-6 border-t border-gray-200">
+      <h3 className="text-lg font-semibold mb-4 text-center">Event Types</h3>
+      <div className="flex flex-wrap gap-4 justify-center">
         {Object.entries(eventTypes).map(([type, config]) => (
           <div key={type} className="flex items-center space-x-2">
             <div className={`w-4 h-4 rounded ${config.color}`}></div>

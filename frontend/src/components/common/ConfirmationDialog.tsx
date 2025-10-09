@@ -40,16 +40,16 @@ const ConfirmationDialog: React.FC<ConfirmationDialogProps> = ({
         
         <p className="text-gray-600 mb-6">{message}</p>
         
-        <div className="flex justify-end space-x-3">
+        <div className="flex space-x-3">
           <button
             onClick={onCancel}
-            className="px-4 py-2 text-gray-700 bg-gray-200 hover:bg-gray-300 rounded-lg transition-colors"
+            className="flex-1 px-4 py-2 text-gray-700 bg-gray-200 hover:bg-gray-300 rounded-lg transition-colors"
           >
             {cancelText}
           </button>
           <button
             onClick={onConfirm}
-            className="px-4 py-2 text-white rounded-lg transition-colors bg-red-600 hover:bg-red-700"
+            className="flex-1 px-4 py-2 text-white rounded-lg transition-colors bg-red-600 hover:bg-red-700"
           >
             {confirmText}
           </button>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, User, Mail, MapPin, Trash2, Edit3, Save, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, User, Mail, MapPin, Trash2, Edit3, Save, AlertTriangle, X, AlertCircle, AlertOctagon, Skull, UserX } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useToast } from '../../contexts/ToastContext';
 import Header from '../common/Header';
@@ -188,39 +188,38 @@ const UserManagement: React.FC<UserManagementProps> = ({ onBack }) => {
 
       {/* Page Header */}
       <div className="bg-white shadow-sm border-b border-gray-200">
-        <div className="w-full px-4 sm:px-6 lg:px-8">
-  <div className="flex items-center justify-between py-6">
-    {/* Left side */}
-    <div className="flex items-center space-x-4">
-      <button
-        onClick={onBack}
-        className="flex items-center text-gray-600 hover:text-gray-800 transition-colors"
-        disabled={isLoading}
-      >
-        <ArrowLeft className="w-5 h-5 mr-2" />
-        Back to Calendar
-      </button>
-    </div>
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between py-6">
+            {/* Left side */}
+            <div className="flex items-center space-x-4">
+              <button
+                onClick={onBack}
+                className="flex items-center text-gray-600 hover:text-gray-800 transition-colors"
+                disabled={isLoading}
+              >
+                <ArrowLeft className="w-5 h-5 mr-2" />
+                Back to Calendar
+              </button>
+            </div>
 
-    {/* Right side */}
-    <div className="flex items-center space-x-4 mr-4">
-      <div className="w-10 h-10 bg-purple-100 rounded-full flex justify-center items-center">
-        <User className="w-5 h-5 text-purple-600" />
-      </div>
-      <h1 className="text-2xl font-bold text-gray-900">User Management</h1>
-    </div>
-  </div>
-</div>
-
+            {/* Right side */}
+            <div className="flex items-center space-x-4">
+              <div className="w-10 h-10 bg-purple-100 rounded-full flex justify-center items-center">
+                <User className="w-5 h-5 text-purple-600" />
+              </div>
+              <h1 className="text-2xl font-bold text-gray-900">User Management</h1>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Main Content */}
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="bg-white rounded-xl shadow-sm border border-gray-200">
-          <div className="p-8">
-            <div className="max-w-2xl mx-auto">
+          <div className="p-6 sm:p-8">
+            <div className="mx-auto space-y-6">
               {/* Profile Information */}
-              <div className="space-y-6">
+              <div className="space-y-4">
                 {/* Username */}
                 <div className="space-y-2">
                   <label className="flex text-sm font-medium text-gray-700">
@@ -296,9 +295,16 @@ const UserManagement: React.FC<UserManagementProps> = ({ onBack }) => {
               </div>
 
               {/* Action Buttons */}
-              <div className="flex flex-col space-y-4 pt-8 border-t border-gray-200">
+              <div className="flex flex-col space-y-3 pt-6 border-t border-gray-200">
                 {isEditing ? (
                   <div className="flex space-x-3">
+                    <button
+                      onClick={handleCancel}
+                      disabled={isLoading}
+                      className="flex-1 flex items-center justify-center px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      Cancel
+                    </button>
                     <button
                       onClick={handleSaveProfile}
                       disabled={isLoading}
@@ -310,13 +316,6 @@ const UserManagement: React.FC<UserManagementProps> = ({ onBack }) => {
                         <Save className="w-4 h-4 mr-2" />
                       )}
                       Save Changes
-                    </button>
-                    <button
-                      onClick={handleCancel}
-                      disabled={isLoading}
-                      className="flex-1 flex items-center justify-center px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                    >
-                      Cancel
                     </button>
                   </div>
                 ) : (
@@ -349,11 +348,20 @@ const UserManagement: React.FC<UserManagementProps> = ({ onBack }) => {
 
       {/* Delete Confirmation Modal */}
       {showDeleteConfirm && (
-        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-60 p-4">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-sm">
-            <div className="p-6 text-center">
+            <div className="p-6 text-center relative">
+              {/* Close button */}
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
+                disabled={isLoading}
+              >
+                <X className="w-5 h-5" />
+              </button>
+              
               <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <AlertTriangle className="w-6 h-6 text-red-600" />
+                <UserX className="w-6 h-6 text-red-600" />
               </div>
               <h3 className="text-lg font-semibold text-gray-800 mb-2">Delete Account</h3>
               <p className="text-gray-600 mb-6">

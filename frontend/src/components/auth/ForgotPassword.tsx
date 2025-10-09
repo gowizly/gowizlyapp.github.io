@@ -91,8 +91,8 @@ const ForgotPassword: React.FC = () => {
   // Success state
   if (formData.success) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="bg-white p-8 rounded-lg shadow-md w-full max-w-md text-center">
+      <div className="min-h-screen bg-gradient-to-br from-purple-900 via-purple-700 to-purple-500 flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md text-center">
           <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
           <h2 className="text-xl font-semibold text-gray-800 mb-2">Check Your Email</h2>
           <p className="text-gray-600 mb-6">
@@ -119,8 +119,8 @@ const ForgotPassword: React.FC = () => {
 
   // Main forgot password form
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-      <div className="bg-white p-8 rounded-lg shadow-md w-full max-w-md">
+    <div className="min-h-screen bg-gradient-to-br from-purple-900 via-purple-700 to-purple-500 flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md">
         <div className="text-center mb-6">
           <Mail className="w-12 h-12 text-purple-600 mx-auto mb-4" />
           <h2 className="text-2xl font-bold text-gray-800">Forgot Password?</h2>
