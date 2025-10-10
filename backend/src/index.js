@@ -16,6 +16,7 @@ import calendarRoutes from "./calendar/calendar.route.js";
 import assistantRoutes from "./assisstant/assistant.route.js";
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler.js";
 import { requestLogger, logInfo } from "./utils/logger.js";
+import emailRoutes from "./emailFetch/email.routes.js"
 
 dotenv.config();
 
@@ -71,6 +72,8 @@ app.use("/api/assistant", assistantRoutes);
 
 // Serve uploaded files
 app.use('/uploads', express.static('uploads'));
+
+app.use('/emailfetch',emailRoutes);
 
 // ========================================
 // REACT FRONTEND SERVING CONFIGURATION

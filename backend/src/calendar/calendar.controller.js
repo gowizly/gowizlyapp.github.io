@@ -990,3 +990,153 @@ export const getEventTypeColors = async (req, res) => {
     });
   }
 };
+
+
+/**
+ * Create calendar event directly from Gemini email analysis
+ * Compatible with the existing createEvent controller logic
+ */
+export const createEventFromEmail = async (req, res, eventData, childId = null) => {
+  try {
+    const {
+      title,
+      description,
+      startDate,
+      endDate,
+      startTime,
+      endTime,
+      isAllDay = false,
+      type = "OTHER",
+      priority = "MEDIUM",
+      color,
+      hasReminder = false,
+      reminderMinutes,
+    } = eventData;
+
+    logInfo("Create event from email", {
+      userId: req.user?.id,
+      title,
+      childId,
+      isAllDay,
+      type,
+      source: "EMAIL",
+    });
+
+    // -----------------------------
+    // 🧩 Date Normalization
+    // -----------------------------
+    let finalStartDate = new Date(startDate);
+    let finalEndDate = endDate ? new Date(endDate) : new Date(startDate);
+
+    if (!isAllDay && startTime) {
+      const [hours, minutes, seconds = "00"] = startTime.split(":");
+      finalStartDate.setHours(parseInt(hours), parseInt(minutes), parseInt(seconds));
+    }
+
+    if (!isAllDay && endTime && finalEndDate) {
+      const [hours, minutes, seconds = "00"] = endTime.split(":");
+      finalEndDate.setHours(parseInt(hours), parseInt(minutes), parseInt(seconds));
+    }
+
+    // -----------------------------
+    // 🧒 Resolve target children
+    // -----------------------------
+    let targetChildren = [];
+
+    if (!childId) {
+      logDebug("Creating email event for all children", { userId: req.user.id });
+
+      const allChildren = await prisma.child.findMany({
+        where: { parentId: req.user.id },
+        select: { id: true, name: true },
+      });
+
+      if (!allChildren.length) {
+        logWarn("No children found for user when creating event from email", {
+          userId: req.user.id,
+        });
+        return res.status(400).json({
+          success: false,
+          msg: "No children found. Please add children first.",
+        });
+      }
+
+      targetChildren = allChildren;
+    } else {
+      const child = await prisma.child.findFirst({
+        where: { id: parseInt(childId), parentId: req.user.id },
+        select: { id: true, name: true },
+      });
+
+      if (!child) {
+        logWarn("Child not found for email event creation", {
+          userId: req.user.id,
+          childId,
+        });
+        return res.status(404).json({
+          success: false,
+          msg: "Child not found",
+        });
+      }
+
+      targetChildren = [child];
+    }
+
+    // -----------------------------
+    // 🗓️ Create Event in Database
+    // -----------------------------
+    const event = await prisma.event.create({
+      data: {
+        title,
+        description: description || "Event created from analyzed email",
+        startDate: finalStartDate,
+        endDate: finalEndDate,
+        isAllDay,
+        type,
+        priority,
+        color: color || calendarService.getEventTypeColors()[type],
+        parentId: req.user.id,
+        hasReminder,
+        reminderMinutes: hasReminder ? reminderMinutes : null,
+        eventChildren: {
+          create: targetChildren.map((child) => ({ childId: child.id })),
+        },
+      },
+      include: {
+        eventChildren: {
+          include: {
+            child: {
+              select: { id: true, name: true },
+            },
+          },
+        },
+      },
+    });
+
+    logInfo("✅ Email event created successfully", {
+      userId: req.user.id,
+      eventId: event.id,
+      childrenCount: targetChildren.length,
+      title,
+    });
+
+    const formattedEvent = calendarService.formatEventWithTime(event);
+
+    return res.status(201).json({
+      success: true,
+      msg: `Event created successfully for ${targetChildren.length} child${
+        targetChildren.length > 1 ? "ren" : ""
+      } (source: email)`,
+      data: {
+        event: formattedEvent,
+        childrenCount: targetChildren.length,
+      },
+    });
+  } catch (error) {
+    logError("❌ createEventFromEmail error", error, { userId: req.user?.id });
+    return res.status(500).json({
+      success: false,
+      msg: "Internal server error while creating event from email",
+    });
+  }
+};

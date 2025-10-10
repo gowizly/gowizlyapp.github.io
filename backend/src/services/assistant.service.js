@@ -386,19 +386,6 @@ Analyze this image and extract any event details, calendar information, schedule
 - School schedules
 - Any text containing dates, times, or event information
 
-For each event found, provide:
-- title: Clear, concise event title
-- description: Brief description of the event
-- startDate: Date in YYYY-MM-DD format
-- endDate: End date in YYYY-MM-DD format (if null consider next day)
-- startTime: Time in HH:MM format (24-hour) or null if all-day
-- endTime: End time in HH:MM format (24-hour) or null
-- isAllDay: true/false
-- type: One of [SCHOOL_EVENT, ASSIGNMENT_DUE, EXAM, PARENT_MEETING, EXTRACURRICULAR, APPOINTMENT, BIRTHDAY, HOLIDAY, REMINDER, OTHER]
-- priority: One of [URGENT, HIGH, MEDIUM, LOW]
-- hasReminder: true/false based on importance
-- reminderMinutes: Number (15, 30, 60, 120) or null
-
 Extract event details in the exact JSON format below:
 
 {

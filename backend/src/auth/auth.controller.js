@@ -277,6 +277,8 @@ export const login = async (req, res) => {
     
     logInfo('Login successful', { userId: user.id, email, username: user.username });
 
+    
+
     res.json({
       success: true,
       msg: "Login successful",
