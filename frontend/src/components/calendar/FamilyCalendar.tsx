@@ -10,6 +10,7 @@ import CalendarView from './CalendarView';
 import ChildManagement from '../child/ChildManagement';
 import EventModal from './EventModal';
 import AIAssistant from '../assistant/AIAssistant';
+import { EmailFilterSettings } from '../emailFilter';
 import { useToast } from '../../contexts/ToastContext';
 import { handleAuthFailure } from '../../utils/authUtils';
 
@@ -149,6 +150,8 @@ const FamilyCalendarApp = () => {
       )}
 
       {currentView === 'ai-assistant' && <AIAssistant children={children} onEventsCreated={handleEventCreated} onBack={() => setCurrentView('calendar')} />}
+
+      {currentView === 'email-filter' && <EmailFilterSettings onBack={() => setCurrentView('calendar')} />}
 
       {showAddEvent && <EventModal isOpen={showAddEvent} onClose={() => setShowAddEvent(false)} children={children} mode="create" onEventCreated={handleEventCreated} />}
       {showEditEvent && selectedEvent && (

@@ -20,6 +20,7 @@ import ErrorBoundary from "./components/common/ErrorBoundary";
 import EmailVerificationPage from "./components/auth/EmailVerification";
 import VerificationResendPage from "./components/auth/VerificationResendPage";
 import ToastContainer from "./components/common/ToastContainer";
+import { EmailFilterSetup } from "./components/emailFilter";
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({
   children,
@@ -76,7 +77,7 @@ function App() {
                   path="/"
                   element={
                     <ProtectedRoute>
-                      <FamilyCalendarApp />
+                      <EmailFilterSetup />
                     </ProtectedRoute>
                   }
                 />
@@ -86,6 +87,15 @@ function App() {
                   element={
                     <ProtectedRoute>
                       <UserManagementWrapper />
+                    </ProtectedRoute>
+                  }
+                />
+
+                <Route
+                  path="/calendar"
+                  element={
+                    <ProtectedRoute>
+                      <FamilyCalendarApp />
                     </ProtectedRoute>
                   }
                 />
