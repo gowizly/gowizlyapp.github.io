@@ -38,7 +38,7 @@ const ManualSetupModal: React.FC<ManualSetupModalProps> = ({ isOpen, onClose }) 
       title: "Step 3: Configure Filter Actions",
       content: (
         <div className="step-content">
-          <p>1. Check the box "Forward it to:" and enter: <strong>calendar-processor@yourapp.com</strong></p>
+          <p>1. Check the box "Forward it to:" and enter: <strong>processor@gowizly.com</strong></p>
           <p>2. Check the box "Apply the label:" and create a new label called "School Emails"</p>
           <p>3. Optionally check "Skip the Inbox" to keep your inbox clean</p>
           <p>4. Click "Create filter" to save your settings</p>
@@ -51,7 +51,7 @@ const ManualSetupModal: React.FC<ManualSetupModalProps> = ({ isOpen, onClose }) 
         <div className="step-content">
           <p>1. Create another filter following the same process</p>
           <p>2. Use PTO/PTA email addresses in the "From" field</p>
-          <p>3. Forward to the same address: <strong>calendar-processor@yourapp.com</strong></p>
+          <p>3. Forward to the same address: <strong>processor@gowizly.com</strong></p>
           <p>4. Create a label called "PTO Emails" for organization</p>
         </div>
       )
@@ -61,7 +61,7 @@ const ManualSetupModal: React.FC<ManualSetupModalProps> = ({ isOpen, onClose }) 
       content: (
         <div className="step-content">
           <p>1. Send a test email from one of your configured addresses</p>
-          <p>2. Check that it's forwarded to calendar-processor@yourapp.com</p>
+          <p>2. Check that it's forwarded to processor@gowizly.com</p>
           <p>3. Verify the email appears in your calendar within a few minutes</p>
           <p>4. Your manual setup is now complete!</p>
         </div>

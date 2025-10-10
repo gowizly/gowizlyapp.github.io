@@ -122,7 +122,7 @@ const FamilyCalendarApp = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
-      <Navigation currentView={currentView} onViewChange={setCurrentView} onAIAssistantOpen={() => setCurrentView('ai-assistant')} />
+      <Navigation currentView={currentView} onViewChange={setCurrentView} onAIAssistantOpen={() => setCurrentView('ai-assistant')} onRefreshEvents={loadEventsForDateRange}  />
 
       {currentView === 'calendar' && (
         <CalendarView

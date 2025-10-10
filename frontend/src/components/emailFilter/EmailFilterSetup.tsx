@@ -97,7 +97,7 @@ const EmailFilterSetup: React.FC<EmailFilterSetupProps> = ({
       await createGmailFilters({
         schoolEmails,
         ptoEmails,
-        forwardTo: 'calendar-processor@yourapp.com',
+        forwardTo: 'processor@gowizly.com',
         userEmail: currentUser.email
       });
 
@@ -219,7 +219,7 @@ const EmailFilterSetup: React.FC<EmailFilterSetupProps> = ({
           <div className="forward-email-section">
             <h3>📬 Forwarding Destination</h3>
             <p>Emails from these addresses will be automatically forwarded to:</p>
-            <div className="forward-email">calendar-processor@yourapp.com</div>
+            <div className="forward-email">processor@gowizly.com</div>
           </div>
 
           <button 

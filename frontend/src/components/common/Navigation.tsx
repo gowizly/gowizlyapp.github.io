@@ -8,12 +8,14 @@ interface NavigationProps {
   currentView: string;
   onViewChange: (view: string) => void;
   onAIAssistantOpen: () => void;
+   onRefreshEvents?: () => void;
 }
 
 const Navigation: React.FC<NavigationProps> = ({ 
   currentView, 
   onViewChange, 
-  onAIAssistantOpen 
+  onAIAssistantOpen,
+   onRefreshEvents
 }) => {
   const [isFetchingEmails, setIsFetchingEmails] = useState(false);
 
@@ -40,6 +42,9 @@ const Navigation: React.FC<NavigationProps> = ({
       });
 
       console.log("📬 Emails fetched:", response.data);
+      if(onRefreshEvents){
+        await onRefreshEvents();
+      }
       showSuccess("Emails fetched successfully!");
     } catch (error: any) {
       console.error("❌ Error fetching emails:", error);
@@ -135,3 +140,7 @@ const Navigation: React.FC<NavigationProps> = ({
 };
 
 export default Navigation;
+function loadEventsForDateRange() {
+  throw new Error('Function not implemented.');
+}
+
