@@ -27,7 +27,6 @@ export const validateRegistration = [
   
   body("email")
     .isEmail()
-    .normalizeEmail()
     .withMessage("Please provide a valid email address"),
   
   body("password")

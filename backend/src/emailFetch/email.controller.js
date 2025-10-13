@@ -127,101 +127,225 @@ export const fetchUserEmails = async (req, res) => {
     });
 
     const userEmails = [];
+    // for (const msg of messages) {
+    //   const raw = msg.parts?.[0]?.body;
+    //   const parsed = await simpleParser(raw);
+    //   // console.log(parsed);
+    //   const fromEmail = extractEmail(parsed.from?.text || "");
+
+    //   if (fromEmail === user.email.toLowerCase()) {
+    //     const emailBody = cleanText(parsed.text || parsed.html);
+    //     console.log(`📧 Email found from ${user.email}: ${parsed.subject}`);
+
+    //     const analysis = await analyzeEmailContent(emailBody);
+    //     console.log(analysis);
+
+    //     if (analysis.hasEvents && analysis.events.length > 0) {
+    //       for (const eventData of analysis.events) {
+    //         // ✅ Detect and map child name from AI output
+    //         let finalChildId = null;
+    //         let matchedChildName = null;
+
+    //         if (eventData.childName) {
+    //           const allChildren = await prisma.child.findMany({
+    //             where: { parentId: user.id },
+    //             select: { id: true, name: true },
+    //           });
+
+    //           const childMatch = allChildren.find(
+    //             (c) => c.name.toLowerCase() === eventData.childName.toLowerCase() // Exact match only
+    //           );
+
+    //           if (childMatch) {
+    //             finalChildId = childMatch.id;
+    //             matchedChildName = childMatch.name;
+    //             console.log(`🎯 Matched child "${childMatch.name}" (ID: ${childMatch.id})`);
+    //           } else {
+    //             console.warn(`⚠️ No matching child found for "${eventData.childName}"`);
+    //           }
+    //         }
+
+    //         // ✅ Duplicate event prevention logic
+    //         const existingEvent = await prisma.event.findFirst({
+    //           where: {
+    //             parentId: user.id,
+    //             title: eventData.title,
+    //             startDate: new Date(eventData.startDate),
+    //             ...(finalChildId ? { eventChildren: { some: { childId: finalChildId } } } : {}),
+    //           },
+    //         });
+
+    //         if (existingEvent) {
+    //           console.log(`⚠️ Skipping duplicate event: "${eventData.title}" for user ${user.id}`);
+    //           continue; // Skip creating duplicate event
+    //         }
+
+    //         // ✅ Prepare event data for creation
+    //         const eventPayload = {
+    //           title: eventData.title,
+    //           description: eventData.description || "Event from email analysis",
+    //           startDate: eventData.startDate,
+    //           endDate: eventData.endDate || eventData.startDate,
+    //           startTime: eventData.startTime,
+    //           endTime: eventData.endTime,
+    //           isAllDay: eventData.isAllDay,
+    //           type: eventData.type || "OTHER",
+    //           priority: eventData.priority || "MEDIUM",
+    //           color: getEventTypeColor(eventData.type),
+    //           hasReminder: eventData.hasReminder,
+    //           reminderMinutes: eventData.reminderMinutes,
+    //           childId: finalChildId || null, // Attach the child ID if found
+    //         };
+
+    //         console.log(
+    //           `🆕 Creating event "${eventData.title}" for ${matchedChildName || "all children"}`
+    //         );
+
+    //         // ✅ Attach the user to request context for createEvent
+    //         const mockReq = { user, body: eventPayload };
+    //         const mockRes = {
+    //           status: (code) => mockRes,
+    //           json: (data) => {
+    //             console.log("📆 Event Created:", data.msg || data);
+    //           },
+    //         };
+
+    //         // Call the createEvent function to persist the event
+    //         await createEvent(mockReq, mockRes);
+    //       }
+    //     }
+
+    //     userEmails.push({
+    //       subject: parsed.subject,
+    //       from: parsed.from.text,
+    //       to: parsed.to.text,
+    //       date: parsed.date,
+    //     });
+    //   }
+    // }
+
     for (const msg of messages) {
-      const raw = msg.parts?.[0]?.body;
-      const parsed = await simpleParser(raw);
-      const fromEmail = extractEmail(parsed.from?.text || "");
+  const raw = msg.parts?.[0]?.body;
+  const parsed = await simpleParser(raw);
 
-      if (fromEmail === user.email.toLowerCase()) {
-        const emailBody = cleanText(parsed.text || parsed.html);
-        console.log(`📧 Email found from ${user.email}: ${parsed.subject}`);
+  // Helper function to extract clean email from "Name <email>"
+  const extractEmail = (str = "") => {
+    const match = str.match(/<([^>]+)>/);
+    return (match ? match[1] : str).trim().toLowerCase();
+  };
 
-        const analysis = await analyzeEmailContent(emailBody);
-        console.log(analysis);
+  // Helper to detect if email (direct or forwarded) belongs to user
+  function isEmailForUser(parsed, userEmail) {
+    const text = (parsed.text || parsed.html || "").toLowerCase();
+    const to = (parsed.to?.text || "").toLowerCase();
+    const cc = (parsed.cc?.text || "").toLowerCase();
+    const subject = (parsed.subject || "").toLowerCase();
+    const from = extractEmail(parsed.from?.text || "").toLowerCase();
 
-        if (analysis.hasEvents && analysis.events.length > 0) {
-          for (const eventData of analysis.events) {
-            // ✅ Detect and map child name from AI output
-            let finalChildId = null;
-            let matchedChildName = null;
+    userEmail = userEmail.toLowerCase();
 
-            if (eventData.childName) {
-              const allChildren = await prisma.child.findMany({
-                where: { parentId: user.id },
-                select: { id: true, name: true },
-              });
+    return (
+      from === userEmail ||
+      to.includes(userEmail) ||
+      cc.includes(userEmail) ||
+      subject.includes(userEmail) ||
+      text.includes(`to: ${userEmail}`) ||
+      text.includes(`from: ${userEmail}`) ||
+      text.includes(userEmail)
+    );
+  }
 
-              const childMatch = allChildren.find(
-                (c) => c.name.toLowerCase() === eventData.childName.toLowerCase() // Exact match only
-              );
+  // ✅ Use helper
+  const forUser = isEmailForUser(parsed, user.email);
 
-              if (childMatch) {
-                finalChildId = childMatch.id;
-                matchedChildName = childMatch.name;
-                console.log(`🎯 Matched child "${childMatch.name}" (ID: ${childMatch.id})`);
-              } else {
-                console.warn(`⚠️ No matching child found for "${eventData.childName}"`);
-              }
-            }
+  if (forUser) {
+    const emailBody = cleanText(parsed.text || parsed.html);
+    console.log(`📧 Email detected for ${user.email}: ${parsed.subject}`);
 
-            // ✅ Duplicate event prevention logic
-            const existingEvent = await prisma.event.findFirst({
-              where: {
-                parentId: user.id,
-                title: eventData.title,
-                startDate: new Date(eventData.startDate),
-                ...(finalChildId ? { eventChildren: { some: { childId: finalChildId } } } : {}),
-              },
-            });
+    const analysis = await analyzeEmailContent(emailBody);
+    console.log(analysis);
 
-            if (existingEvent) {
-              console.log(`⚠️ Skipping duplicate event: "${eventData.title}" for user ${user.id}`);
-              continue; // Skip creating duplicate event
-            }
+    if (analysis.hasEvents && analysis.events.length > 0) {
+      for (const eventData of analysis.events) {
+        let finalChildId = null;
+        let matchedChildName = null;
 
-            // ✅ Prepare event data for creation
-            const eventPayload = {
-              title: eventData.title,
-              description: eventData.description || "Event from email analysis",
-              startDate: eventData.startDate,
-              endDate: eventData.endDate || eventData.startDate,
-              startTime: eventData.startTime,
-              endTime: eventData.endTime,
-              isAllDay: eventData.isAllDay,
-              type: eventData.type || "OTHER",
-              priority: eventData.priority || "MEDIUM",
-              color: getEventTypeColor(eventData.type),
-              hasReminder: eventData.hasReminder,
-              reminderMinutes: eventData.reminderMinutes,
-              childId: finalChildId || null, // Attach the child ID if found
-            };
+        // 🧠 Match child by name if present
+        if (eventData.childName) {
+          const allChildren = await prisma.child.findMany({
+            where: { parentId: user.id },
+            select: { id: true, name: true },
+          });
 
-            console.log(
-              `🆕 Creating event "${eventData.title}" for ${matchedChildName || "all children"}`
-            );
+          const childMatch = allChildren.find(
+            (c) => c.name.toLowerCase() === eventData.childName.toLowerCase()
+          );
 
-            // ✅ Attach the user to request context for createEvent
-            const mockReq = { user, body: eventPayload };
-            const mockRes = {
-              status: (code) => mockRes,
-              json: (data) => {
-                console.log("📆 Event Created:", data.msg || data);
-              },
-            };
-
-            // Call the createEvent function to persist the event
-            await createEvent(mockReq, mockRes);
+          if (childMatch) {
+            finalChildId = childMatch.id;
+            matchedChildName = childMatch.name;
+            console.log(`🎯 Matched child "${childMatch.name}" (ID: ${childMatch.id})`);
+          } else {
+            console.warn(`⚠️ No matching child found for "${eventData.childName}"`);
           }
         }
 
-        userEmails.push({
-          subject: parsed.subject,
-          from: parsed.from.text,
-          to: parsed.to.text,
-          date: parsed.date,
+        // 🧩 Prevent duplicates
+        const existingEvent = await prisma.event.findFirst({
+          where: {
+            parentId: user.id,
+            title: eventData.title,
+            startDate: new Date(eventData.startDate),
+            ...(finalChildId ? { eventChildren: { some: { childId: finalChildId } } } : {}),
+          },
         });
+
+        if (existingEvent) {
+          console.log(`⚠️ Skipping duplicate event: "${eventData.title}" for user ${user.id}`);
+          continue;
+        }
+
+        // 🆕 Build event payload
+        const eventPayload = {
+          title: eventData.title,
+          description: eventData.description || "Event from email analysis",
+          startDate: eventData.startDate,
+          endDate: eventData.endDate || eventData.startDate,
+          startTime: eventData.startTime,
+          endTime: eventData.endTime,
+          isAllDay: eventData.isAllDay,
+          type: eventData.type || "OTHER",
+          priority: eventData.priority || "MEDIUM",
+          color: getEventTypeColor(eventData.type),
+          hasReminder: eventData.hasReminder,
+          reminderMinutes: eventData.reminderMinutes,
+          childId: finalChildId || null,
+        };
+
+        console.log(
+          `🆕 Creating event "${eventData.title}" for ${matchedChildName || "all children"}`
+        );
+
+        // Mock req/res for createEvent
+        const mockReq = { user, body: eventPayload };
+        const mockRes = {
+          status: () => mockRes,
+          json: (data) => console.log("📆 Event Created:", data.msg || data),
+        };
+
+        await createEvent(mockReq, mockRes);
       }
     }
+
+    userEmails.push({
+      subject: parsed.subject,
+      from: parsed.from?.text,
+      to: parsed.to?.text,
+      date: parsed.date,
+    });
+  }
+}
+
 
     await connection.closeBox(false);
     connection.end();
