@@ -137,7 +137,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({
           : viewMode === "week"
           ? "grid-cols-7"
           : "grid-cols-1"
-      } gap-4 overflow-visible`}
+      } gap-4 overflow-x-auto max-w-full`}
     >
       {(viewMode === "month" || viewMode === "week") &&
         ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
@@ -243,11 +243,11 @@ const CalendarView: React.FC<CalendarViewProps> = ({
   );
 
   return (
-    <div className="p-6 overflow-visible">
+    <div className="p-6 overflow-x-hidden max-w-full">
       {/* Header */}
-      <div className="flex justify-between items-center mb-6">
-        <div className="flex items-center space-x-4">
-          <div className="relative">
+      <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center mb-6 gap-4">
+        <div className="flex items-center space-x-4 flex-wrap">
+          <div className="relative min-w-0 flex-1">
             <select
               value={selectedChild?.id?.toString() || ""}
               onChange={(e) => {
@@ -259,7 +259,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({
                   onChildChange(child || null);
                 }
               }}
-              className="px-4 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent min-w-48 w-auto appearance-none bg-white"
+              className="w-full px-4 py-2 pr-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent appearance-none bg-white"
               title="Select child to filter events"
             >
               <option value="">All Children</option>
@@ -287,27 +287,29 @@ const CalendarView: React.FC<CalendarViewProps> = ({
           </div>
         </div>
 
-        <div className="flex items-center space-x-4">
-          <h2 className="text-2xl font-bold text-gray-800">
+        <div className="flex items-center space-x-4 flex-wrap">
+          <h2 className="text-xl lg:text-2xl font-bold text-gray-800 flex-shrink-0">
             {selectedDate.toLocaleDateString("en-US", {
               month: "long",
               year: "numeric",
               timeZone: "UTC",
             })}
           </h2>
-          <button
-            onClick={() => navigate(-1)}
-            className="p-2 hover:bg-gray-100 rounded-lg"
-          >
-            <ChevronLeft className="w-5 h-5" />
-          </button>
-          <button
-            onClick={() => navigate(1)}
-            className="p-2 hover:bg-gray-100 rounded-lg"
-          >
-            <ChevronRight className="w-5 h-5" />
-          </button>
-          <div className="relative">
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={() => navigate(-1)}
+              className="p-2 hover:bg-gray-100 rounded-lg flex-shrink-0"
+            >
+              <ChevronLeft className="w-5 h-5" />
+            </button>
+            <button
+              onClick={() => navigate(1)}
+              className="p-2 hover:bg-gray-100 rounded-lg flex-shrink-0"
+            >
+              <ChevronRight className="w-5 h-5" />
+            </button>
+          </div>
+          <div className="relative flex-shrink-0">
             <select
               value={viewMode}
               onChange={(e) => setViewMode(e.target.value as any)}
@@ -336,10 +338,11 @@ const CalendarView: React.FC<CalendarViewProps> = ({
           </div>
           <button
             onClick={onAddEvent}
-            className="bg-purple-600 text-white px-4 py-2 rounded-lg flex items-center space-x-2"
+            className="bg-purple-600 text-white px-4 py-2 rounded-lg flex items-center space-x-2 flex-shrink-0"
             title="Add a new event"
           >
-            <Plus className="w-5 h-5" /> Add Event
+            <Plus className="w-5 h-5" /> 
+            <span className="hidden sm:inline">Add Event</span>
           </button>
         </div>
       </div>

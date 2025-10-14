@@ -120,7 +120,7 @@ const FamilyCalendarApp = () => {
   }, [loadChildren, showSuccess]);
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 overflow-x-hidden max-w-full">
       <Header />
       <Navigation currentView={currentView} onViewChange={setCurrentView} onAIAssistantOpen={() => setCurrentView('ai-assistant')} onRefreshEvents={loadEventsForDateRange}  />
 

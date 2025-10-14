@@ -61,9 +61,9 @@ const Navigation: React.FC<NavigationProps> = ({
   };
 
   return (
-    <div className="bg-white border-b border-gray-200 px-4 py-2">
-      <div className="flex space-x-6 items-center justify-between">
-        <div className="flex space-x-6">
+    <div className="bg-white border-b border-gray-200 px-4 py-2 overflow-x-hidden">
+      <div className="flex space-x-6 items-center justify-between max-w-full">
+        <div className="flex space-x-6 flex-wrap">
         <button
           onClick={() => onViewChange('calendar')}
           className={`px-4 py-2 rounded-lg transition-colors ${
@@ -73,7 +73,7 @@ const Navigation: React.FC<NavigationProps> = ({
           }`}
         >
           <Calendar className="w-5 h-5 inline mr-2" />
-          Calendar
+          <span className="hidden sm:inline">Calendar</span>
         </button>
         
         <button
@@ -85,7 +85,7 @@ const Navigation: React.FC<NavigationProps> = ({
           }`}
         >
           <Users className="w-5 h-5 inline mr-2" />
-          Children
+          <span className="hidden sm:inline">Children</span>
         </button>
         
         <button
@@ -97,7 +97,7 @@ const Navigation: React.FC<NavigationProps> = ({
           }`}
         >
           <Bot className="w-5 h-5 inline mr-2" />
-          AI Assistant
+          <span className="hidden sm:inline">AI Assistant</span>
         </button>
         
         <button
@@ -109,7 +109,7 @@ const Navigation: React.FC<NavigationProps> = ({
           }`}
         >
           <Mail className="w-5 h-5 inline mr-2" />
-          Email Filter Settings
+          <span className="hidden sm:inline">Email Filter Settings</span>
         </button>
         </div>
         
@@ -125,12 +125,12 @@ const Navigation: React.FC<NavigationProps> = ({
           {isFetchingEmails ? (
             <>
               <Loader2 className="w-5 h-5 animate-spin" />
-              <span>Fetching...</span>
+              <span className="hidden sm:inline">Fetching...</span>
             </>
           ) : (
             <>
               <Download className="w-5 h-5" />
-              <span>Fetch Emails</span>
+              <span className="hidden sm:inline">Fetch Emails</span>
             </>
           )}
         </button>

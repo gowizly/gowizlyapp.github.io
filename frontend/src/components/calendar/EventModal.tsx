@@ -607,9 +607,9 @@ const EventModal: React.FC<EventModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-        <div className="bg-purple-600 text-white p-4 flex justify-between items-center">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 overflow-y-auto">
+      <div className="bg-white rounded-lg shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+        <div className="bg-purple-600 text-white p-4 flex justify-between items-center flex-shrink-0">
           <h3 className="text-lg font-semibold">
             {mode === "create" ? "Add New Event" : "Edit Event"}
           </h3>
@@ -632,7 +632,7 @@ const EventModal: React.FC<EventModalProps> = ({
           </div>
         </div>
 
-        <div className="p-6">
+        <div className="p-6 overflow-y-auto flex-1">
           {validationErrors.length > 0 && (
             <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
               <h4 className="font-medium mb-2">
@@ -678,7 +678,7 @@ const EventModal: React.FC<EventModalProps> = ({
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form id="event-form" onSubmit={handleSubmit} className="space-y-4">
             {/* Event Title */}
             <div>
               <label className="block text-sm text-left font-semibold text-gray-700 mb-2">
@@ -973,31 +973,34 @@ const EventModal: React.FC<EventModalProps> = ({
               </label>
             </div>
 
-            <div className="flex justify-end space-x-4 pt-4">
-              <button
-                type="button"
-                onClick={onClose}
-                className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center space-x-2"
-              >
-                <span>
-                  {isSubmitting
-                    ? mode === "create"
-                      ? "Creating..."
-                      : "Updating..."
-                    : mode === "create"
-                    ? "Add Event"
-                    : "Update Event"}
-                </span>
-              </button>
-            </div>
           </form>
+        </div>
+        
+        {/* Fixed Footer */}
+        <div className="bg-gray-50 border-t border-gray-200 p-4 flex justify-end space-x-4 flex-shrink-0">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            form="event-form"
+            disabled={isSubmitting}
+            className="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center space-x-2"
+          >
+            <span>
+              {isSubmitting
+                ? mode === "create"
+                  ? "Creating..."
+                  : "Updating..."
+                : mode === "create"
+                ? "Add Event"
+                : "Update Event"}
+            </span>
+          </button>
         </div>
       </div>
     </div>

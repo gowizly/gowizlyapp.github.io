@@ -30,18 +30,22 @@ const Header: React.FC = () => {
       <div className="bg-purple-600 text-white p-4 flex justify-between items-center">
         <div className="flex items-center space-x-4">
           <Calendar className="w-8 h-8" />
-          <h1 className="text-xl font-bold">Gowizly Family Calendar</h1>
+          <h1 className="text-sm sm:text-lg lg:text-xl font-bold">Gowizly Family Calendar</h1>
         </div>
-        <div className="flex items-center space-x-4">
+        <div className="flex items-center space-x-2 sm:space-x-4">
           <button
             onClick={() => navigate('/user-management')}
-            className="px-3 py-2 hover:bg-purple-700 rounded-lg transition-colors text-sm cursor-pointer"
+            className="px-2 sm:px-3 py-2 hover:bg-purple-700 rounded-lg transition-colors text-sm cursor-pointer"
           >
-            Welcome, {user?.username}
+            <span className="hidden sm:inline">Welcome, </span>
+            <span className="sm:hidden">
+              {user?.username?.split(' ').map(n => n[0]).join('').toUpperCase() || 'U'}
+            </span>
+            <span className="hidden sm:inline">{user?.username}</span>
           </button>
           <button
             onClick={handleLogoutClick}
-            className="p-2 hover:bg-purple-700 rounded-lg transition-colors flex items-center space-x-2"
+            className="p-1 sm:p-2 hover:bg-purple-700 rounded-lg transition-colors flex items-center space-x-1 sm:space-x-2"
             title="Logout"
           >
             <LogOut className="w-5 h-5" />
