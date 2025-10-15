@@ -224,7 +224,8 @@ export const verifyEmail = async (req, res) => {
 export const login = async (req, res) => {
   try {
     const { email, password } = req.body;
-    
+
+    console.log(email);
     logInfo('Login attempt', { email });
 
     // Find user by email

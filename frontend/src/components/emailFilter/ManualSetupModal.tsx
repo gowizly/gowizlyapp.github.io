@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { X, ChevronLeft, ChevronRight, Check } from 'lucide-react';
+import React from 'react';
+import { X } from 'lucide-react';
 import './ManualSetupModal.css';
 
 interface ManualSetupModalProps {
@@ -8,145 +8,74 @@ interface ManualSetupModalProps {
 }
 
 const ManualSetupModal: React.FC<ManualSetupModalProps> = ({ isOpen, onClose }) => {
-  const [currentStep, setCurrentStep] = useState(1);
-  const totalSteps = 5;
-
-  const steps = [
-    {
-      title: "Step 1: Access Gmail Settings",
-      content: (
-        <div className="step-content">
-          <p>1. Open Gmail in your web browser</p>
-          <p>2. Click the gear icon (⚙️) in the top right corner</p>
-          <p>3. Select "See all settings" from the dropdown menu</p>
-          <p>4. Click on the "Filters and Blocked Addresses" tab</p>
-        </div>
-      )
-    },
-    {
-      title: "Step 2: Create a New Filter",
-      content: (
-        <div className="step-content">
-          <p>1. Click "Create a new filter" at the bottom of the page</p>
-          <p>2. In the "From" field, enter the school email addresses</p>
-          <p>3. Separate multiple addresses with "OR" (e.g., school1@edu.com OR school2@edu.com)</p>
-          <p>4. Click "Create filter" to continue</p>
-        </div>
-      )
-    },
-    {
-      title: "Step 3: Configure Filter Actions",
-      content: (
-        <div className="step-content">
-          <p>1. Check the box "Forward it to:" and enter: <strong>processor@gowizly.com</strong></p>
-          <p>2. Check the box "Apply the label:" and create a new label called "School Emails"</p>
-          <p>3. Optionally check "Skip the Inbox" to keep your inbox clean</p>
-          <p>4. Click "Create filter" to save your settings</p>
-        </div>
-      )
-    },
-    {
-      title: "Step 4: Repeat for PTO Emails",
-      content: (
-        <div className="step-content">
-          <p>1. Create another filter following the same process</p>
-          <p>2. Use PTO/PTA email addresses in the "From" field</p>
-          <p>3. Forward to the same address: <strong>processor@gowizly.com</strong></p>
-          <p>4. Create a label called "PTO Emails" for organization</p>
-        </div>
-      )
-    },
-    {
-      title: "Step 5: Verify Setup",
-      content: (
-        <div className="step-content">
-          <p>1. Send a test email from one of your configured addresses</p>
-          <p>2. Check that it's forwarded to processor@gowizly.com</p>
-          <p>3. Verify the email appears in your calendar within a few minutes</p>
-          <p>4. Your manual setup is now complete!</p>
-        </div>
-      )
-    }
-  ];
-
-  const handleNext = () => {
-    if (currentStep < totalSteps) {
-      setCurrentStep(currentStep + 1);
-    }
-  };
-
-  const handlePrevious = () => {
-    if (currentStep > 1) {
-      setCurrentStep(currentStep - 1);
-    }
-  };
-
-  const handleDone = () => {
-    onClose();
-    setCurrentStep(1); // Reset for next time
-  };
-
   if (!isOpen) return null;
 
+  const copyToClipboard = () => {
+    navigator.clipboard.writeText('processor@gowizly.com');
+    alert('Email address copied to clipboard!');
+  };
+
   return (
-    <div className="modal-overlay">
-      <div className="modal-container">
-        <div className="modal-header">
-          <h2 className="modal-title">📧 Manual Email Filter Setup</h2>
-          <button className="close-button" onClick={onClose}>
-            <X className="w-6 h-6" />
-          </button>
-        </div>
+    <div className="fixed inset-0 flex items-center justify-center bg-black/50 backdrop-blur-sm z-50">
+      <div className="bg-white rounded-2xl shadow-xl p-6 max-w-lg w-full mx-4 relative">
+        <button
+          onClick={onClose}
+          className="absolute top-3 right-3 text-gray-400 hover:text-gray-600"
+        >
+          <X className="w-5 h-5" />
+        </button>
 
-        <div className="modal-body">
-          <div className="step-indicator">
-            <div className="step-progress">
-              {Array.from({ length: totalSteps }, (_, index) => (
-                <div
-                  key={index + 1}
-                  className={`step-dot ${currentStep > index + 1 ? 'completed' : currentStep === index + 1 ? 'active' : ''}`}
-                >
-                  {currentStep > index + 1 ? <Check className="w-4 h-4" /> : index + 1}
-                </div>
-              ))}
-            </div>
-            <div className="step-text">
-              Step {currentStep} of {totalSteps}
-            </div>
-          </div>
+        <h2 className="text-xl font-bold text-gray-900 mb-3">
+          🛠 Manual Email Forwarding Setup
+        </h2>
 
-          <div className="step-content-container">
-            <h3 className="step-title">{steps[currentStep - 1].title}</h3>
-            {steps[currentStep - 1].content}
-          </div>
-        </div>
-
-        <div className="modal-footer">
-          <button
-            className="nav-button secondary"
-            onClick={handlePrevious}
-            disabled={currentStep === 1}
-          >
-            <ChevronLeft className="w-4 h-4 mr-2" />
-            Previous
-          </button>
-
-          {currentStep === totalSteps ? (
-            <button className="nav-button primary" onClick={handleDone}>
-              <Check className="w-4 h-4 mr-2" />
-              Done
+        <ol className="list-decimal list-inside text-sm text-gray-700 space-y-2">
+          <li>
+            Open{' '}
+            <a
+              href="https://mail.google.com/mail/u/0/#settings/fwdandpop"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-600 underline"
+            >
+              Gmail Forwarding Settings
+            </a>.
+          </li>
+          <li>
+            Click <strong>“Add a forwarding address”</strong>.
+          </li>
+          <li>
+            Enter this address:{' '}
+            <code className="bg-gray-100 p-1 rounded">
+              processor@gowizly.com
+            </code>
+            <button
+              onClick={copyToClipboard}
+              className="ml-2 text-blue-500 hover:text-blue-700 text-xs"
+              type="button"
+            >
+              (Copy)
             </button>
-          ) : (
-            <button className="nav-button primary" onClick={handleNext}>
-              Next
-              <ChevronRight className="w-4 h-4 ml-2" />
-            </button>
-          )}
-        </div>
+          </li>
+          <li>
+            Gmail will send a verification email to{' '}
+            <code>processor@gowizly.com</code>. Our system will auto-verify it.
+          </li>
+          <li>
+            Once verified, go back to Forwarding Settings and select{' '}
+            <strong>
+              “Forward a copy of incoming mail to processor@gowizly.com”
+            </strong>.
+          </li>
+          <li>Save changes — you’re done!</li>
+        </ol>
+
+        <p className="text-xs text-gray-500 mt-3">
+          You can now close this panel and return to your dashboard.
+        </p>
       </div>
     </div>
   );
 };
 
 export default ManualSetupModal;
-

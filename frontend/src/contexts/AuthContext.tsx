@@ -212,6 +212,7 @@ const login = async (email: string, password: string, rememberMe: boolean = fals
     setIsLoading(true);
     
     console.log('🔐 Attempting login for:', email);
+    // console.log("Nischay", email);
     
     const response = await axios.post(`${AUTH_BASE_URL}/login`, 
       { email, password },
