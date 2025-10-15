@@ -127,7 +127,7 @@ const EmailFilterSetup: React.FC<EmailFilterSetupProps> = ({
           <p>Configure automatic email filtering and calendar integration</p>
         </div>
 
-        <div className="user-info">
+        {/* <div className="user-info">
           <div className="user-avatar">
             {'avatar' in currentUser && currentUser.avatar ? (
               <img src={currentUser.avatar} alt="User Avatar" />
@@ -139,11 +139,11 @@ const EmailFilterSetup: React.FC<EmailFilterSetupProps> = ({
             <div><strong>{currentUser.name}</strong></div>
             <div className="user-email">{currentUser.email}</div>
           </div>
-        </div>
+        </div> */}
 
         <form id="emailFilterForm" onSubmit={handleSubmit}>
           <div className="form-group">
-            <label htmlFor="schoolEmails">School Email Addresses</label>
+            {/* <label htmlFor="schoolEmails">School Email Addresses</label>
             <div className="email-input-container">
               <input 
                 type="email" 
@@ -161,8 +161,8 @@ const EmailFilterSetup: React.FC<EmailFilterSetupProps> = ({
               >
                 +
               </button>
-            </div>
-            <div className="example-text">Add email addresses from your child's school</div>
+            </div> */}
+            {/* <div className="example-text">Add email addresses from your child's school</div>
             <div className="email-list">
               {schoolEmails.map((email, index) => (
                 <div key={index} className="email-item">
@@ -176,10 +176,10 @@ const EmailFilterSetup: React.FC<EmailFilterSetupProps> = ({
                   </button>
                 </div>
               ))}
-            </div>
+            </div> */}
           </div>
 
-          <div className="form-group">
+          {/* <div className="form-group">
             <label htmlFor="ptoEmails">PTO/PTA Email Addresses</label>
             <div className="email-input-container">
               <input 
@@ -214,15 +214,15 @@ const EmailFilterSetup: React.FC<EmailFilterSetupProps> = ({
                 </div>
               ))}
             </div>
-          </div>
+          </div> */}
 
-          <div className="forward-email-section">
+          {/* <div className="forward-email-section">
             <h3>📬 Forwarding Destination</h3>
             <p>Emails from these addresses will be automatically forwarded to:</p>
             <div className="forward-email">processor@gowizly.com</div>
-          </div>
+          </div> */}
 
-          <button 
+          {/* <button 
             type="submit" 
             className={`setup-btn ${isLoading ? 'loading' : ''}`}
             disabled={isLoading}
@@ -234,7 +234,7 @@ const EmailFilterSetup: React.FC<EmailFilterSetupProps> = ({
             <div className="success-message">
               ✅ Email filters and forwarding have been successfully configured! Calendar events will now be automatically created from your school and PTO emails.
             </div>
-          )}
+          )} */}
         </form>
 
         <div className="secondary-buttons">
