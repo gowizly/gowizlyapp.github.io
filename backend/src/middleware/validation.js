@@ -66,7 +66,6 @@ export const validateResendVerification = [
 export const validateLogin = [
   body("email")
     .isEmail()
-    .normalizeEmail()
     .withMessage("Please provide a valid email address"),
   
   body("password")
@@ -80,7 +79,6 @@ export const validateLogin = [
 export const validateForgotPassword = [
   body("email")
     .isEmail()
-    .normalizeEmail()
     .withMessage("Please provide a valid email address"),
   
   validateRequest
